@@ -31,7 +31,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { billPayGuardAbi } from "../contracts/BillPayGuard.artifact.js";
-import { cosmosHashForEvmTx } from "./deploy.js";
+import { cosmosHashForEvmTx } from "./cosmos-hash.js";
 
 /** QoreChain testnet (qorechain-diana) EVM chain id. Nothing else is allowed. */
 const TESTNET_CHAIN_ID = 9800;

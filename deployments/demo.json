@@ -1,0 +1,53 @@
+{
+  "contract": "0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e",
+  "owner": "0x326697b1a1EAd2E0FCa024754Fd5530D7e5cBDee",
+  "landlord": "0x8A17951d12a0BE648D1335D81b5C638b358B4c52",
+  "agent": "0x5dA52428DE0b9928105175CF00C6435B21AB4779",
+  "depositQor": "0.5",
+  "agentFundingQor": "1",
+  "schedules": [
+    {
+      "id": 0,
+      "label": "rent",
+      "payee": "0x8A17951d12a0BE648D1335D81b5C638b358B4c52",
+      "amountPerPaymentQor": "0.1",
+      "totalCapQor": "0.25",
+      "maxPayments": 5,
+      "intervalSeconds": 30,
+      "expiryUnix": 1797362871
+    },
+    {
+      "id": 1,
+      "label": "subscription",
+      "payee": "0x5dA52428DE0b9928105175CF00C6435B21AB4779",
+      "amountPerPaymentQor": "0.05",
+      "totalCapQor": "0.5",
+      "maxPayments": 10,
+      "intervalSeconds": 60,
+      "expiryUnix": 1797362871
+    }
+  ],
+  "txs": {
+    "deposit": {
+      "evm": "0xe4f5039e19c286a1ecf69a789474346a0c8f65ee1ad49e1b23215c410aeb9946",
+      "cosmos": "46A9185469C27B5EEA1137E9BB0F945C424D6FD4C1F591A0A21FEB92CD175345"
+    },
+    "createSchedule0": {
+      "evm": "0x3756478c4b9c1ce668afc015ea15bb12efc7583fbd7485af2b8d5156f0ee2736",
+      "cosmos": "72DF76AB4745D66E4199BB7D9A53EB7B25F5D7F1E2438719E140AA13951373CD"
+    },
+    "createSchedule1": {
+      "evm": "0x00dbf6fee6d51a2843f31040f776f634f71e4edbdc873a02da1b75f749e14719",
+      "cosmos": "6C965CCCF2C96B0D4758A71CF7DCE93902FDA80FC999E54AF8E7ABF383E978B8"
+    },
+    "setAgent": {
+      "evm": "0x02219874d6cbbc17126590f8d5ad3d36c79792143ffb4a6af6fe680c99beee63",
+      "cosmos": "A6BE91D62B93B1FE9F93AD713A41048F3BA37C4B36C5B89E23B12E57ABF482BC"
+    },
+    "fundAgent": {
+      "evm": "0x3427ea076e523f7ce542da9efbe2d7ee5dfbe7a0caea446db483e653662d5975",
+      "cosmos": "8FD463C94F1123838210539F7A5EBCD6E3E707FE2E875E9807B556ED23E64702"
+    }
+  },
+  "setupAt": "2026-11-15T19:28:01.768Z"
+}
