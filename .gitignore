@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+
+# Secrets — NEVER commit. Real keys live in .env / .env.agent (git-ignored)
+# and in mode-600 files outside the repo.
+.env
+.env.*
+!.env.example
+!.env.agent.example
+
+# Logs / OS
+*.log
+.DS_Store
