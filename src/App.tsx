@@ -45,6 +45,16 @@ function reasonLabel(reason: string): string {
   return REASON_LABEL[reason] ?? reason;
 }
 
+function formatInterval(seconds: bigint): string {
+  const s = Number(seconds);
+  if (s === 0) return "none";
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${s / 60}m`;
+  if (s < 86400) return `${s / 3600}h`;
+  const d = s / 86400;
+  return `${Number.isInteger(d) ? d : d.toFixed(1)}d`;
+}
+
 type Schedule = {
   owner: Address;
   payee: Address;
@@ -493,11 +503,7 @@ export function App() {
                             <td style={styles.td}>
                               {s.payments.toString()} / {s.maxPayments.toString()}
                             </td>
-                            <td style={styles.td}>
-                              {s.intervalSeconds === 0n
-                                ? "none"
-                                : `${(Number(s.intervalSeconds) / 86400).toString()}d`}
-                            </td>
+                            <td style={styles.td}>{formatInterval(s.intervalSeconds)}</td>
                             <td style={styles.td}>
                               <span
                                 style={styles.badge(
