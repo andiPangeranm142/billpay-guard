@@ -49,5 +49,58 @@
       "cosmos": "8FD463C94F1123838210539F7A5EBCD6E3E707FE2E875E9807B556ED23E64702"
     }
   },
-  "setupAt": "2026-11-15T19:28:01.768Z"
+  "setupAt": "2026-11-15T19:28:01.768Z",
+  "agentPayments": [
+    {
+      "scheduleId": 0,
+      "label": "rent",
+      "amountQor": "0.1",
+      "evmTx": "0xd57d5ab60234eefae905d4c3ee777f8ad889343641d42b37241b4d50aa53e232",
+      "block": 10151668,
+      "executedBy": "agent",
+      "executedAt": "2026-11-15T19:30:21Z"
+    },
+    {
+      "scheduleId": 1,
+      "label": "subscription",
+      "amountQor": "0.05",
+      "evmTx": "0xabddc4c633371fca7bd9564efdc737d37fe5d53c715f2a5c08d0fa9c9dbcab05",
+      "block": 10151669,
+      "executedBy": "agent",
+      "executedAt": "2026-11-15T19:30:21Z"
+    },
+    {
+      "scheduleId": 0,
+      "label": "rent",
+      "amountQor": "0.1",
+      "evmTx": "0x19053a058e6bdb3582ae6070c1a077109e90bf563305986a38d171987563c204",
+      "block": 10151707,
+      "executedBy": "agent",
+      "executedAt": "2026-11-15T19:31:17Z"
+    }
+  ],
+  "rejections": [
+    {
+      "scheduleId": 0,
+      "checkDueReason": "too-soon",
+      "outcome": "reverted-on-chain",
+      "evmTx": "0x43fc142e167ef1b68c6ca90976e752e1f8127961c69d184653c32ed404462ed4",
+      "cosmosTx": "F1322B651AD6AA808BCE81A49747D3E7750551FA933A30B642EAF703A2B7AD6D",
+      "block": 10151718,
+      "attemptedAt": "2026-11-15T19:31:47Z",
+      "note": "Payment attempted 10s after the previous one; the 30s interval had not elapsed."
+    },
+    {
+      "scheduleId": 0,
+      "checkDueReason": "cap-reached",
+      "outcome": "reverted-on-chain",
+      "evmTx": "0x35ebc083ef0dbe3b606b6d3b4d2dfb2c46eceaebebf58aaf7441f9d9bca7f56b",
+      "cosmosTx": "B798ECA9A563800EB5A1DA52BDA43151689BC1055FAAD1AA4642868814CDF8DA",
+      "block": 10151739,
+      "attemptedAt": "2026-11-15T19:32:05.797Z",
+      "note": "Paid 0.2 of the 0.25 QOR cap; a third 0.1 QOR payment would exceed it."
+    }
+  ],
+  "agentPqcRegistration": "DA7FC1890DA1996D61C8581C191A26A93DEE263D1A8C1EF74CC51A5558ABA69A",
+  "ownerPqcRegistration": "74A436FEB9A1D3B83F52DD734E717E1AD15B04D0F390015A96FD5AB994860104"
 }
