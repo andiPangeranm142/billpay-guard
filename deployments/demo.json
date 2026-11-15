@@ -87,6 +87,16 @@
       "executedBy": "agent",
       "executedAt": "2026-11-15T19:40:52Z",
       "note": "Executed live during the demo-video recording (docs/demo.mp4, scene 3)."
+    },
+    {
+      "scheduleId": 1,
+      "label": "subscription",
+      "amountQor": "0.05",
+      "cosmosTx": "FA5A2A898B805B7FBD476F42538D8BA1D1F0212B8BB172A0DEB54468B4149D70",
+      "block": 10159020,
+      "executedBy": "agent (leashed)",
+      "executedAt": "2026-11-15T22:25:38Z",
+      "note": "Paid through the abstract-account leash (scripts/leash.ts): the agent signed a MsgExecuteEVM meta-transaction and the owner relayed it; the chain checked spending rule billpay-agent (50,000 uqor per-tx, 500,000 uqor daily, executePayment only) before the call ran. No separate EVM tx hash — the EVM call executes inside the Cosmos tx. Schedule 1: 0.15/0.50 QOR, 3/10 payments after this."
     }
   ],
   "rejections": [

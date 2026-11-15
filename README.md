@@ -76,6 +76,58 @@ decides a limit, so it can never talk itself into breaking one. Run it
 once (`npm run agent`), on a loop (`npm run agent -- --loop 60`), or as a
 dry run (`npm run agent -- --dry-run`).
 
+## The leash: abstract-account spending rules
+
+On top of the contract's own limits, the agent wears a second leash
+enforced by the chain's abstract-account module (`scripts/leash.ts`):
+
+- The owner holds an abstract account
+  ([REST](https://api-testnet.qore.host/qorechain/abstractaccount/v1/accounts/qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y),
+  `session_based`, created 16 Nov 2026,
+  [tx `43B2C4D4…09B9D`](https://explore.qore.network/tx/43B2C4D432AADF644DE81A39BACD718B625D7CAD7CD23F7E74B7CF5B84C09B9D)).
+- The agent key is linked to that account as an authenticator with the
+  `evm` permission only
+  ([REST](https://api-testnet.qore.host/qorechain/abstractaccount/v1/accounts/qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y/authenticators),
+  [tx `598647E1…08D4`](https://explore.qore.network/tx/598647E1D891A3BCBFC69883F301C380A5A0C657C5EFECEAE6193442F1BC08D4)),
+  expiring 15 Dec 2026 19:27:51 UTC — the same expiry as schedule 1.
+- The link carries a spending rule, `billpay-agent`
+  ([REST](https://api-testnet.qore.host/qorechain/abstractaccount/v1/accounts/qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y/spending_rules)):
+  at most 50,000 uqor (0.05 QOR) per execution, 500,000 uqor (0.50 QOR)
+  per day, denoms `["uqor"]`, and only one EVM call —
+  `0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e/0x162a0cf8`
+  (`executePayment(uint256)` on the guard contract). The rule mirrors
+  schedule 1's caps; the per-schedule caps themselves are still the
+  contract's job, since the rule allows the function on any schedule id.
+
+A leashed payment works like this: the agent signs a meta-transaction
+(`MsgExecuteEVM`, EIP-191 `personal_sign`) for `executePayment(1)` and the
+owner relays it, paying the fee. The chain checks the spending rule before
+the call runs, and the EVM call executes from the owner's address, so the
+contract sees `msg.sender == owner`. No EVM window is needed on either
+account for this path — the rule, not the window, is what bounds the agent
+here. One leashed payment has actually run: schedule 1 went from 0.10 to
+0.15 QOR paid (3/10 payments) in
+[tx `FA5A2A89…49D70`](https://explore.qore.network/tx/FA5A2A898B805B7FBD476F42538D8BA1D1F0212B8BB172A0DEB54468B4149D70)
+(block 10159020, 16 Nov 2026; the agent's authenticator nonce is now 1).
+The leashed payment has no separate EVM transaction hash — the EVM call
+executes inside the Cosmos `MsgExecuteEVM` transaction, so the Cosmos hash
+plus the schedule state change is the proof.
+
+Two honest notes. First, the authenticator view reports
+`has_spend_rule: false`: that field means a rule attached to the key
+itself, and the module has no message to set a per-key rule — the key is
+bound by the account-wide rule above, which is what the chain applies
+(the first enabled rule bounds every linked key without its own). Second,
+the leashed path needs a relayer: the agent cannot pay while the owner is
+offline to relay. The agent's normal EOA path (`scripts/agent.ts`, and the
+drill-day `scripts/drill-pay.ts`) keeps working independently of the leash.
+
+```bash
+npx tsx scripts/leash.ts status   # abstract account, rules, authenticators, schedule 1
+npx tsx scripts/leash.ts setup    # create the account + link the agent (idempotent)
+npx tsx scripts/leash.ts pay      # pay schedule 1 once through the leash
+```
+
 ## Category requirements
 
 | Requirement | How BillPay Guard meets it |
@@ -85,8 +137,8 @@ dry run (`npm run agent -- --dry-run`).
 | Value limits | `amountPerPayment` per payment + `totalCap` per schedule. |
 | Duration limits | `intervalSeconds` + `expiry` per schedule. |
 | Target limits | One allowlisted payee per schedule; the contract pays nobody else. |
-| Smart-account spending rules | The guard contract is the spending-rules engine: caps are enforced on-chain, not in the agent. |
-| Authenticated messaging | Only the owner-authorised agent address may execute payments; the agent authenticates with its own key inside its own PQ window. |
+| Smart-account spending rules | A real abstract-account layer on top of the contract: the agent key is linked to the owner's abstract account with the `evm` permission and a chain-enforced spending rule (see "The leash" below). |
+| Authenticated messaging | Only the owner-authorised agent address may execute payments; the agent authenticates with its own key inside its own PQ window — or, on the leashed path, with an EIP-191-signed meta-transaction the chain checks against its spending rule. |
 
 ## Repository layout
 
@@ -97,6 +149,9 @@ scripts/window.ts               PQC key registration + EVM window (owner & agent
 scripts/deploy.ts               deploy to the Diana testnet
 scripts/setup-demo.ts           deposit + demo schedules + agent authorisation
 scripts/agent.ts                the off-chain agent runner
+scripts/leash.ts                abstract-account leash: link the agent key
+                                with a chain-enforced spending rule, pay
+                                schedule 1 through a relayed meta-transaction
 scripts/demo-rejection.ts       demonstrate an on-chain limit rejection
 scripts/render-check.mjs        Playwright render check of the live demo
 scripts/prepare-env.ts          one-time local env setup (writes .env files)
@@ -156,17 +211,19 @@ total cap, max 5, 30 s interval) and schedule 1 "subscription"
 (0.05 QOR/payment, 0.5 QOR total cap, max 10, 60 s interval), funded with a
 0.5 QOR deposit. The agent runner then paid them — **4 real on-chain
 payments, 0.30 QOR total** (the fourth executed live during the demo-video
-recording). Two further payment attempts were **rejected on-chain**
-(transactions mined with status `reverted`): one too-soon (interval not
-elapsed) and one cap-reaching (a third 0.1 QOR payment would have exceeded
-schedule 0's 0.25 QOR cap). All hashes are recorded in
+recording). A fifth payment (schedule 1, 0.05 QOR) ran 16 Nov 2026 through
+the abstract-account leash (see "The leash" above), bringing the total to
+**5 payments, 0.35 QOR**. Two further payment attempts were **rejected
+on-chain** (transactions mined with status `reverted`): one too-soon
+(interval not elapsed) and one cap-reaching (a third 0.1 QOR payment would
+have exceeded schedule 0's 0.25 QOR cap). All hashes are recorded in
 [`deployments/demo.json`](deployments/demo.json) — nothing here claims an
 on-chain result that has not happened.
 
 Live state, re-verified 16 Nov 2026 (read back from the contract): the
-guard holds **0.2 QOR** (0.5 QOR deposit − 0.30 QOR paid); schedule 0 has
-paid 0.2 / 0.25 QOR and is `cap-reached`; schedule 1 has paid 0.1 / 0.5
-QOR and is `due`. Both schedules expire 15 Dec 2026.
+guard holds **0.15 QOR** (0.5 QOR deposit − 0.35 QOR paid); schedule 0 has
+paid 0.2 / 0.25 QOR and is `cap-reached`; schedule 1 has paid 0.15 / 0.5
+QOR (3/10 payments) and is `due`. Both schedules expire 15 Dec 2026.
 
 ## Limitations — read this
 
@@ -178,6 +235,13 @@ QOR and is `due`. Both schedules expire 15 Dec 2026.
   only to the registered address — but if the owner registers the wrong
   address, the funds go to the wrong address. Check payees before creating
   schedules.
+- **The leash needs a relayer.** A leashed payment only lands while the
+  owner is online to relay the agent's signed meta-transaction. The
+  agent's normal EOA path does not have this dependency.
+- **The spending rule allows the function, not the schedule.** The
+  `billpay-agent` rule permits `executePayment` on any schedule id; the
+  per-schedule caps (which schedule, how much, how often) are enforced by
+  the contract, not by the rule.
 - **Owner-key compromise is out of scope.** The guard protects against a
   compromised *agent*; if the owner's own key is stolen, the thief is the
   owner as far as the contract is concerned.

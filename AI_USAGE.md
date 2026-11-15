@@ -54,6 +54,10 @@ with credit in the README.
 - `contracts/BillPayGuard.sol` — the spending-guard contract (original design).
 - `scripts/agent.ts` — the off-chain agent runner (reads schedules, asks
   the contract what is due, executes payments, logs every skip).
+- `scripts/leash.ts` — the abstract-account leash (creates the owner's
+  abstract account, links the agent key with a chain-enforced spending
+  rule, and pays schedule 1 once through a relayed meta-transaction;
+  added 16 Nov 2026, verified on-chain the same day).
 - `scripts/deploy.ts` — deployment + deployment record (adapted from the
   sibling project's deploy-script pattern, with a testnet-only chain-id
   guard).
@@ -90,14 +94,19 @@ with credit in the README.
 - [x] Contract deployed on qorechain-diana (address in
       `deployments/testnet.json`).
 - [x] Agent executed real on-chain payments (hashes in
-      `deployments/demo.json` — 4 payments, 0.30 QOR).
+      `deployments/demo.json` — 5 payments, 0.35 QOR, the fifth through
+      the abstract-account leash).
+- [x] Abstract-account leash live: owner abstract account, agent key
+      linked with spending rule `billpay-agent`, one leashed payment
+      executed and verified on-chain (16 Nov 2026; see the README's
+      "The leash" section for the hashes and REST evidence).
 - [x] A limit rejection demonstrated on-chain (record in
       `deployments/demo.json` — 2 reverted transactions).
 - [x] Live demo renders on GitHub Pages (Playwright check, no errors).
 - [x] Demo video ≤ 3 minutes, real screen recording (`docs/demo.mp4` —
       2:37, 1080p, verified with ffprobe + frame checks).
 - [x] No secrets in the repo (`git grep` for mnemonic / private-key
-      material before every push — final scan 15 Nov 2026: only the
+      material before every push — final scan 16 Nov 2026: only the
       public Hardhat test mnemonic, placeholder `0x000…` keys in
       `.env.example` files, and public on-chain tx hashes).
 
