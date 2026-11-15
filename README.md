@@ -22,13 +22,21 @@ payees. It does not swap, does not trade, and holds no price feeds.
 
 ## Live deployment (QoreChain testnet, qorechain-diana)
 
-> Deployment details are filled in by `npm run deploy` (see
-> [`deployments/testnet.json`](deployments/testnet.json)).
-
-- Contract: _to be deployed_
+- Contract: [`0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e`](https://explore.qore.network/address/0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e) (deployed 15 Nov 2026, block 10151549, deploy tx `0x600dfc9301c97d178a3bc2676b1aa520dd4b2c7a15285f2f778f1198f1287c10`)
 - Live demo: https://andipangeranm142.github.io/billpay-guard/
-- Demo video: [`docs/demo.mp4`](docs/demo.mp4) (≤ 3 min, real screen recording)
-- Project page: https://build.qorechain.io/p/billpay-guard
+- Demo video: [`docs/demo.mp4`](docs/demo.mp4) (2:37, 1080p, real screen recording — includes a payment executed live during the recording)
+- Project page: created on build.qorechain.io after this build (not yet published)
+
+Deployment record: [`deployments/testnet.json`](deployments/testnet.json).
+Demo evidence: [`deployments/demo.json`](deployments/demo.json).
+
+> Note: an earlier `setup-demo` run accidentally deployed a second, empty
+> instance of the same contract
+> (`0x3cfd510876608551be630cdb68e2b40205541fc7`) because the deploy script
+> ran on import. That instance holds no funds, has no schedules, and is
+> unused; the bug was fixed (see `scripts/cosmos-hash.ts` and the guarded
+> `main()` in `scripts/deploy.ts`). The canonical deployment is the one
+> above.
 
 ## How it works
 
@@ -141,12 +149,18 @@ npm run preview
 
 ## Demo evidence
 
-The demo setup (`scripts/setup-demo.ts`) creates two real schedules on the
-Diana testnet and the agent runner pays them; the rejection demo
-(`scripts/demo-rejection.ts`) then attempts a payment that would breach
-schedule 0's total cap, and the guard refuses it. All hashes are recorded
-in [`deployments/demo.json`](deployments/demo.json) — nothing here claims
-an on-chain result that has not happened.
+The demo setup (`scripts/setup-demo.ts`) created two real schedules on the
+Diana testnet (15 Nov 2026): schedule 0 "rent" (0.1 QOR/payment, 0.25 QOR
+total cap, max 5, 30 s interval) and schedule 1 "subscription"
+(0.05 QOR/payment, 0.5 QOR total cap, max 10, 60 s interval), funded with a
+0.5 QOR deposit. The agent runner then paid them — **4 real on-chain
+payments, 0.30 QOR total** (the fourth executed live during the demo-video
+recording). Two further payment attempts were **rejected on-chain**
+(transactions mined with status `reverted`): one too-soon (interval not
+elapsed) and one cap-reaching (a third 0.1 QOR payment would have exceeded
+schedule 0's 0.25 QOR cap). All hashes are recorded in
+[`deployments/demo.json`](deployments/demo.json) — nothing here claims an
+on-chain result that has not happened.
 
 ## Limitations — read this
 

@@ -80,20 +80,23 @@ category: this agent pays bills, it does not trade.
 
 ## Verification checklist
 
-- [ ] `npm run compile` — contract compiles with solc 0.8.24.
-- [ ] `npm test` — all contract tests pass on a local EVM.
-- [ ] `npm run typecheck` — `tsc --noEmit` clean.
-- [ ] `npm run build` — frontend builds.
-- [ ] Contract deployed on qorechain-diana (address in
+- [x] `npm run compile` — contract compiles with solc 0.8.24.
+- [x] `npm test` — all contract tests pass on a local EVM (14/14).
+- [x] `npm run typecheck` — `tsc --noEmit` clean.
+- [x] `npm run build` — frontend builds.
+- [x] Contract deployed on qorechain-diana (address in
       `deployments/testnet.json`).
-- [ ] Agent executed real on-chain payments (hashes in
-      `deployments/demo.json`).
-- [ ] A limit rejection demonstrated on-chain (record in
-      `deployments/demo.json`).
-- [ ] Live demo renders on GitHub Pages (Playwright check, no errors).
-- [ ] Demo video ≤ 3 minutes, real screen recording (`docs/demo.mp4`).
-- [ ] No secrets in the repo (`git grep` for mnemonic / private-key
-      material before every push).
+- [x] Agent executed real on-chain payments (hashes in
+      `deployments/demo.json` — 4 payments, 0.30 QOR).
+- [x] A limit rejection demonstrated on-chain (record in
+      `deployments/demo.json` — 2 reverted transactions).
+- [x] Live demo renders on GitHub Pages (Playwright check, no errors).
+- [x] Demo video ≤ 3 minutes, real screen recording (`docs/demo.mp4` —
+      2:37, 1080p, verified with ffprobe + frame checks).
+- [x] No secrets in the repo (`git grep` for mnemonic / private-key
+      material before every push — final scan 15 Nov 2026: only the
+      public Hardhat test mnemonic, placeholder `0x000…` keys in
+      `.env.example` files, and public on-chain tx hashes).
 
 ## Limitations the AI is aware of
 

@@ -77,6 +77,16 @@
       "block": 10151707,
       "executedBy": "agent",
       "executedAt": "2026-11-15T19:31:17Z"
+    },
+    {
+      "scheduleId": 1,
+      "label": "subscription",
+      "amountQor": "0.05",
+      "evmTx": "0xe3919bcdd8e25ca34fcc600a1e869e90f4984a4c38bec4a0c90143e746abdc4b",
+      "block": 10152111,
+      "executedBy": "agent",
+      "executedAt": "2026-11-15T19:40:52Z",
+      "note": "Executed live during the demo-video recording (docs/demo.mp4, scene 3)."
     }
   ],
   "rejections": [
