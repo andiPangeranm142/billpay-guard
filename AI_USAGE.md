@@ -12,11 +12,14 @@ as the assistant "forza") from a human-approved concept, over build sessions
 starting 16 November 2026. The human (Aeron) chose the event and the
 category, approved the concept and the multi-project plan, and owns every
 step that needs a human identity: accounts, funding, registration, and
-submission. No code was copied from any other fest project — the concept
+submission. The concept and the contract are original — the concept
 (bill payments with on-chain spending limits) was checked against the
 projects already listed on build.qorechain.io before building began, and
 is deliberately different from the rival DCA/trading agent in the same
-category: this agent pays bills, it does not trade.
+category: this agent pays bills, it does not trade. Proven scaffolding
+patterns (the window helper, deploy script, test setup, and frontend
+scaffold) were reused and adapted from the sibling project Quantum Flip,
+with credit in the README.
 
 ## Workflow
 

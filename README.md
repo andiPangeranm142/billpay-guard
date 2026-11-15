@@ -25,7 +25,7 @@ payees. It does not swap, does not trade, and holds no price feeds.
 - Contract: [`0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e`](https://explore.qore.network/address/0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e) (deployed 15 Nov 2026, block 10151549, deploy tx `0x600dfc9301c97d178a3bc2676b1aa520dd4b2c7a15285f2f778f1198f1287c10`)
 - Live demo: https://andipangeranm142.github.io/billpay-guard/
 - Demo video: [`docs/demo.mp4`](docs/demo.mp4) (2:37, 1080p, real screen recording — includes a payment executed live during the recording)
-- Project page: created on build.qorechain.io after this build (not yet published)
+- Project page: [billpay-guard on build.qorechain.io](https://build.qorechain.io/p/billpay-guard) (Post-Quantum AI Agents; AI-Native Verified)
 
 Deployment record: [`deployments/testnet.json`](deployments/testnet.json).
 Demo evidence: [`deployments/demo.json`](deployments/demo.json).
@@ -98,6 +98,7 @@ scripts/deploy.ts               deploy to the Diana testnet
 scripts/setup-demo.ts           deposit + demo schedules + agent authorisation
 scripts/agent.ts                the off-chain agent runner
 scripts/demo-rejection.ts       demonstrate an on-chain limit rejection
+scripts/render-check.mjs        Playwright render check of the live demo
 scripts/prepare-env.ts          one-time local env setup (writes .env files)
 test/billpay-guard.test.ts      contract tests (Ganache local chain)
 src/                            React dashboard (Vite + wagmi + RainbowKit)
@@ -161,6 +162,11 @@ elapsed) and one cap-reaching (a third 0.1 QOR payment would have exceeded
 schedule 0's 0.25 QOR cap). All hashes are recorded in
 [`deployments/demo.json`](deployments/demo.json) — nothing here claims an
 on-chain result that has not happened.
+
+Live state, re-verified 16 Nov 2026 (read back from the contract): the
+guard holds **0.2 QOR** (0.5 QOR deposit − 0.30 QOR paid); schedule 0 has
+paid 0.2 / 0.25 QOR and is `cap-reached`; schedule 1 has paid 0.1 / 0.5
+QOR and is `due`. Both schedules expire 15 Dec 2026.
 
 ## Limitations — read this
 
