@@ -81,11 +81,11 @@ const checks = {
   "contract address": text.includes("0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e"),
   // Stat labels are uppercased by CSS text-transform in innerText.
   "live schedules count (2)": /schedules\s*\n2\b/i.test(text),
-  "live payments executed (6)": /payments executed\s*\n6\b/i.test(text),
-  "live total paid (0.4 QOR)": text.includes("0.4 QOR"),
-  "live guard balance (0.1 QOR)": text.includes("0.1 QOR"),
+  "live payments executed (7)": /payments executed\s*\n7\b/i.test(text),
+  "live total paid (0.45 QOR)": text.includes("0.45 QOR"),
+  "live guard balance (0.05 QOR)": text.includes("0.05 QOR"),
   "schedule 0 paid/cap (0.2 / 0.25 QOR)": text.includes("0.2 / 0.25 QOR"),
-  "schedule 1 paid/cap (0.2 / 0.5 QOR)": text.includes("0.2 / 0.5 QOR"),
+  "schedule 1 paid/cap (0.25 / 0.5 QOR)": text.includes("0.25 / 0.5 QOR"),
   // checkDue reason "cap-reached" is shown with its human label.
   "cap-reached status shown (Total cap reached)": text.includes("Total cap reached"),
   "due status shown (Due — ready to pay)": text.includes("Due — ready to pay"),
