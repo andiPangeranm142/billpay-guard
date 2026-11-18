@@ -213,17 +213,21 @@ total cap, max 5, 30 s interval) and schedule 1 "subscription"
 payments, 0.30 QOR total** (the fourth executed live during the demo-video
 recording). A fifth payment (schedule 1, 0.05 QOR) ran 16 Nov 2026 through
 the abstract-account leash (see "The leash" above), bringing the total to
-**5 payments, 0.35 QOR**. Two further payment attempts were **rejected
+**5 payments, 0.35 QOR**. A sixth payment (schedule 1, 0.05 QOR) ran
+18 Nov 2026 as the Q-Day Drill proof (`scripts/drill-pay.ts`, tx
+`0x96d84888…16f502`, block 10286574), bringing the total to **6 payments,
+0.40 QOR**. Two further payment attempts were **rejected
 on-chain** (transactions mined with status `reverted`): one too-soon
 (interval not elapsed) and one cap-reaching (a third 0.1 QOR payment would
 have exceeded schedule 0's 0.25 QOR cap). All hashes are recorded in
 [`deployments/demo.json`](deployments/demo.json) — nothing here claims an
 on-chain result that has not happened.
 
-Live state, re-verified 16 Nov 2026 (read back from the contract): the
-guard holds **0.15 QOR** (0.5 QOR deposit − 0.35 QOR paid); schedule 0 has
-paid 0.2 / 0.25 QOR and is `cap-reached`; schedule 1 has paid 0.15 / 0.5
-QOR (3/10 payments) and is `due`. Both schedules expire 15 Dec 2026.
+Live state, re-verified 18 Nov 2026 after the Q-Day Drill (read back from
+the contract): the guard holds **0.10 QOR** (0.5 QOR deposit − 0.40 QOR
+paid); schedule 0 has paid 0.2 / 0.25 QOR and is `cap-reached`; schedule 1
+has paid 0.20 / 0.5 QOR (4/10 payments) and is `due`. Both schedules
+expire 15 Dec 2026.
 
 ## Limitations — read this
 
