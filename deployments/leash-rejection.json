@@ -1,0 +1,135 @@
+{
+  "attemptedAt": "2026-11-18T20:35:46.630Z",
+  "rule": {
+    "id": "billpay-agent",
+    "perTxLimitUqor": "50000",
+    "dailyLimitUqor": "500000",
+    "allowedDenoms": [
+      "uqor"
+    ],
+    "allowedEvmCalls": [
+      "0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e/0x162a0cf8"
+    ]
+  },
+  "attemptedCall": {
+    "to": "0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e",
+    "function": "withdraw(uint256)",
+    "selector": "0x2e1a7d4d",
+    "args": [
+      "1000"
+    ],
+    "value": "0",
+    "note": "withdraw is outside the rule's allowlist, which permits only executePayment(uint256) on the guard contract. Amount 1000 wei is negligible by design."
+  },
+  "cosmosTx": "FEF47E6B1BD611AC80D53C59F3C760FC355A2F5907363AE3530F07604343F801",
+  "block": 10335955,
+  "code": 0,
+  "rawLog": "",
+  "events": [
+    {
+      "type": "pqc_verify",
+      "attributes": {
+        "address": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y",
+        "key_type": "hybrid",
+        "algorithm_id": "dilithium5",
+        "hybrid_mode": "required",
+        "status": "algorithm_active"
+      }
+    },
+    {
+      "type": "pqc_hybrid_verify",
+      "attributes": {
+        "address": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y",
+        "algorithm_id": "dilithium5",
+        "status": "verified"
+      }
+    },
+    {
+      "type": "ai_anomaly_check",
+      "attributes": {
+        "score_millionths": "0",
+        "action": "allow",
+        "is_anomalous": "false"
+      }
+    },
+    {
+      "type": "coin_spent",
+      "attributes": {
+        "spender": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y",
+        "amount": "150000uqor"
+      }
+    },
+    {
+      "type": "coin_received",
+      "attributes": {
+        "receiver": "qor17xpfvakm2amg962yls6f84z3kell8c5lyj5r7l",
+        "amount": "150000uqor"
+      }
+    },
+    {
+      "type": "transfer",
+      "attributes": {
+        "recipient": "qor17xpfvakm2amg962yls6f84z3kell8c5lyj5r7l",
+        "sender": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y",
+        "amount": "150000uqor"
+      }
+    },
+    {
+      "type": "message",
+      "attributes": {
+        "sender": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y"
+      }
+    },
+    {
+      "type": "tx",
+      "attributes": {
+        "fee": "150000uqor",
+        "fee_payer": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y"
+      }
+    },
+    {
+      "type": "tx",
+      "attributes": {
+        "acc_seq": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y/14"
+      }
+    },
+    {
+      "type": "tx",
+      "attributes": {
+        "signature": "YXS4L/98AraQrPDV+iBGv0VROjCLliZE4ZBzZL2vMHhAXn0RkjPOuvHMOBgKiW+zhArtCnlMMe47IdG928SvOQ=="
+      }
+    },
+    {
+      "type": "message",
+      "attributes": {
+        "action": "/qorechain.abstractaccount.v1.MsgExecuteEVM",
+        "sender": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y",
+        "module": "abstractaccount",
+        "msg_index": "0"
+      }
+    },
+    {
+      "type": "abstractaccount_execution_failed",
+      "attributes": {
+        "account": "qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y",
+        "lane": "evm",
+        "nonce": "1",
+        "reason": "a linked key with a spending rule may call 0xAc31FB4F4b85F29F6DC72e8485Fa9188b37f3B6E with data only if the rule lists the call in allowed_evm_calls (or lists the token as \"erc20/0xAc31FB4F4b85F29F6DC72e8485Fa9188b37f3B6E\" for a token transfer or approval): authenticator not permitted for this action",
+        "msg_index": "0"
+      }
+    }
+  ],
+  "outcome": "refused-by-spending-rule",
+  "reason": "{\"account\":\"qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y\",\"lane\":\"evm\",\"nonce\":\"1\",\"reason\":\"a linked key with a spending rule may call 0xAc31FB4F4b85F29F6DC72e8485Fa9188b37f3B6E with data only if the rule lists the call in allowed_evm_calls (or lists the token as \\\"erc20/0xAc31FB4F4b85F29F6DC72e8485Fa9188b37f3B6E\\\" for a token transfer or approval): authenticator not permitted for this action\",\"msg_index\":\"0\"}",
+  "scheduleBefore": {
+    "paidWei": "200000000000000000",
+    "payments": "4"
+  },
+  "scheduleAfter": {
+    "paidWei": "200000000000000000",
+    "payments": "4"
+  },
+  "ownerBalanceBeforeWei": "100000000000000000",
+  "ownerBalanceAfterWei": "100000000000000000",
+  "explorer": "https://explore.qore.network/tx/FEF47E6B1BD611AC80D53C59F3C760FC355A2F5907363AE3530F07604343F801"
+}

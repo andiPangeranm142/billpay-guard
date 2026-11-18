@@ -31,6 +31,14 @@
  *   npx tsx scripts/leash.ts setup    create the abstract account (once)
  *                                     and link the agent key with its rule
  *   npx tsx scripts/leash.ts pay      pay schedule 1 once through the leash
+ *                                     (verifies a signed payment intent when
+ *                                     one exists; --require-intent refuses
+ *                                     to relay without one — see intent.ts)
+ *   npx tsx scripts/leash.ts reject   prove the rule bites: send ONE
+ *                                     agent-signed execution the rule
+ *                                     forbids (withdraw, outside the
+ *                                     allowlist) and record the chain's
+ *                                     refusal in deployments/leash-rejection.json
  *
  * Secrets are read into memory only to sign; nothing in this script prints
  * a mnemonic or a private key.
@@ -59,6 +67,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { billPayGuardAbi } from "../contracts/BillPayGuard.artifact.js";
+import { intentFilePath, loadSignedIntent, verifySignedIntent } from "./intent.js";
 
 /** QoreChain testnet (qorechain-diana). Nothing else is allowed. */
 const CHAIN_ID = "qorechain-diana";
@@ -205,13 +214,12 @@ async function waitForTx(hash: string, timeoutMs = 60_000): Promise<DeliveredTx>
 
 /**
  * Broadcast owner-signed native-lane messages (hybrid-signed with the
- * owner's ML-DSA-87 key) and wait for inclusion. Throws unless the
- * delivered transaction has code 0. A refused abstract-account execution
- * still lands in a code-0 transaction with an
- * `abstractaccount_execution_failed` event, so callers that relay an
- * execution must also check the events (see checkExecution).
+ * owner's ML-DSA-87 key) and wait for inclusion, returning the delivered
+ * transaction whatever its code. Callers that expect success use
+ * broadcastOwner; callers that deliberately provoke a refusal (reject)
+ * need the raw result to record HOW the chain refused.
  */
-async function broadcastOwner(
+async function broadcastOwnerRaw(
   acc: UnifiedAccount,
   messages: EncodeObject[],
   fee: { amount: { denom: string; amount: string }[]; gas: string },
@@ -225,7 +233,22 @@ async function broadcastOwner(
   } finally {
     transport.disconnect();
   }
-  const tx = await waitForTx(res.transactionHash);
+  return waitForTx(res.transactionHash);
+}
+
+/**
+ * Broadcast owner-signed native-lane messages and wait for inclusion.
+ * Throws unless the delivered transaction has code 0. A refused
+ * abstract-account execution still lands in a code-0 transaction with an
+ * `abstractaccount_execution_failed` event, so callers that relay an
+ * execution must also check the events (see checkExecution).
+ */
+async function broadcastOwner(
+  acc: UnifiedAccount,
+  messages: EncodeObject[],
+  fee: { amount: { denom: string; amount: string }[]; gas: string },
+): Promise<DeliveredTx> {
+  const tx = await broadcastOwnerRaw(acc, messages, fee);
   if (tx.code !== 0) {
     throw new Error(`Transaction ${tx.hash} delivered with code ${tx.code}: ${tx.rawLog.slice(0, 500)}`);
   }
@@ -282,6 +305,7 @@ async function authenticatorsOf(ownerCosmos: string) {
 interface ScheduleState {
   due: boolean;
   reason: string;
+  payee: Address;
   paid: bigint;
   totalCap: bigint;
   payments: bigint;
@@ -300,7 +324,7 @@ async function scheduleState(contract: Address): Promise<ScheduleState> {
   const s = (await readContract(client.publicClient, {
     address: contract, abi: billPayGuardAbi, functionName: "getSchedule", args: [SCHEDULE_ID],
   })) as unknown as ScheduleState & { owner: Address; payee: Address };
-  return { due, reason, paid: s.paid, totalCap: s.totalCap, payments: s.payments, maxPayments: s.maxPayments, amountPerPayment: s.amountPerPayment, expiry: s.expiry };
+  return { due, reason, payee: s.payee, paid: s.paid, totalCap: s.totalCap, payments: s.payments, maxPayments: s.maxPayments, amountPerPayment: s.amountPerPayment, expiry: s.expiry };
 }
 
 function printSchedule(s: ScheduleState): void {
@@ -421,6 +445,145 @@ function keyProvider(privateKey: Hex) {
   };
 }
 
+/** The owner's deposited balance inside the guard contract (wei). */
+async function ownerContractBalance(contract: Address, ownerEvm: string): Promise<bigint> {
+  const client = await createEvmClient({ endpoints: { evmRpc: EVM_RPC } });
+  return (await readContract(client.publicClient, {
+    address: contract, abi: billPayGuardAbi, functionName: "balances", args: [ownerEvm as Address],
+  })) as bigint;
+}
+
+/**
+ * Prove the spending rule bites. The agent signs ONE meta-transaction the
+ * rule forbids — `withdraw(1000)` on the guard contract, a function
+ * outside the allowlist (the rule permits ONLY
+ * `executePayment(uint256)`) — and the owner relays it. The amount is a
+ * negligible 1000 wei on purpose: if the chain ever failed to refuse,
+ * the call would move almost nothing (and would be recorded as executed,
+ * not as a refusal). A refusal is expected in one of two forms: the
+ * relay transaction itself fails (code != 0), or it lands with code 0
+ * carrying an `abstractaccount_execution_failed` event. Either way the
+ * full record goes to deployments/leash-rejection.json, and the schedule
+ * must be unchanged afterwards.
+ */
+async function reject(): Promise<void> {
+  const owner = await ownerAccount();
+  const agent = agentKey();
+  const contract = contractAddress();
+  const selector = toFunctionSelector("executePayment(uint256)");
+  console.log(`owner (relayer): ${owner.evm} (${owner.cosmos})`);
+  console.log(`agent:           ${agent.address}`);
+  console.log(`contract:        ${contract}`);
+
+  // Confirm the rule is in place and really does allow only executePayment.
+  const rules = await spendingRulesOf(owner.cosmos);
+  const rule = rules.rules.find((r) => r.id === RULE_ID);
+  if (!rule || !rule.enabled) throw new Error(`Spending rule ${RULE_ID} is missing or disabled — nothing to test against.`);
+  const allowed = rule.allowedEvmCalls;
+  if (allowed.length !== 1 || allowed[0] !== `${contract.toLowerCase()}/${selector}`) {
+    throw new Error(`Spending rule ${RULE_ID} does not match the expected allowlist: ${JSON.stringify(allowed)}`);
+  }
+  console.log(`rule ${RULE_ID}: per-tx ${rule.perTxLimit} uqor, daily ${rule.dailyLimit} uqor, calls ${JSON.stringify(allowed)}`);
+
+  const before = await scheduleState(contract);
+  printSchedule(before);
+  const balanceBefore = await ownerContractBalance(contract, owner.evm);
+  console.log(`owner contract balance: ${balanceBefore} wei`);
+
+  const digestVersion = await resolveEvmAuthDigestVersion({ rest: REST });
+  const { nonce, linked } = await fetchAuthNonce({ rest: REST, address: owner.cosmos, pubkey: agent.address });
+  if (!linked) throw new Error("The agent key is not linked to the owner's abstract account. Run `npx tsx scripts/leash.ts setup` first.");
+  console.log(`digest ${digestVersion}, agent nonce ${nonce}`);
+
+  // The forbidden call: withdraw(uint256) is NOT in the rule's allowlist.
+  const withdrawSelector = toFunctionSelector("withdraw(uint256)");
+  const data = encodeFunctionData({ abi: billPayGuardAbi, functionName: "withdraw", args: [1000n] });
+  console.log(`attempting forbidden call: withdraw(uint256) selector ${withdrawSelector}, amount 1000 wei`);
+  const executeMsg = await buildMetaMaskExecuteEvm({
+    provider: keyProvider(agent.privateKey) as never,
+    address: agent.address,
+    relayer: owner.cosmos,
+    chainId: CHAIN_ID,
+    account: owner.cosmos,
+    to: contract,
+    value: "0",
+    data: hexToBytes(data),
+    gasLimit: EXEC_GAS_LIMIT,
+    nonce,
+    digestVersion,
+  });
+  const tx = await broadcastOwnerRaw(owner, [executeMsg], FEE_EXECUTE);
+  console.log(`relay tx: ${tx.hash} (block ${tx.height}, code ${tx.code})`);
+
+  const failedEvents = tx.events.filter((e) => e.type === "abstractaccount_execution_failed");
+  const after = await scheduleState(contract);
+  const balanceAfter = await ownerContractBalance(contract, owner.evm);
+  const scheduleUnchanged = after.payments === before.payments && after.paid === before.paid;
+  const balanceUnchanged = balanceAfter === balanceBefore;
+
+  let outcome: string;
+  let reason: string;
+  if (tx.code !== 0) {
+    outcome = "refused-tx-level";
+    reason = tx.rawLog.slice(0, 500);
+  } else if (failedEvents.length > 0) {
+    outcome = "refused-by-spending-rule";
+    reason = JSON.stringify(failedEvents[0].attributes);
+  } else if (!balanceUnchanged || !scheduleUnchanged) {
+    outcome = "EXECUTED-NOT-REFUSED";
+    reason = "No refusal event and the on-chain state moved — the forbidden call ran.";
+  } else {
+    outcome = "unclear";
+    reason = "Code 0, no abstractaccount_execution_failed event, but no state moved either — inconclusive.";
+  }
+  console.log(`outcome: ${outcome}`);
+  console.log(`reason: ${reason}`);
+  console.log(`schedule unchanged: ${scheduleUnchanged}; owner balance unchanged: ${balanceUnchanged}`);
+
+  const record = {
+    attemptedAt: new Date().toISOString(),
+    rule: {
+      id: RULE_ID,
+      perTxLimitUqor: rule.perTxLimit.toString(),
+      dailyLimitUqor: rule.dailyLimit.toString(),
+      allowedDenoms: rule.allowedDenoms,
+      allowedEvmCalls: rule.allowedEvmCalls,
+    },
+    attemptedCall: {
+      to: contract,
+      function: "withdraw(uint256)",
+      selector: withdrawSelector,
+      args: ["1000"],
+      value: "0",
+      note: "withdraw is outside the rule's allowlist, which permits only executePayment(uint256) on the guard contract. Amount 1000 wei is negligible by design.",
+    },
+    cosmosTx: tx.hash,
+    block: Number(tx.height),
+    code: tx.code,
+    rawLog: tx.rawLog,
+    events: tx.events,
+    outcome,
+    reason,
+    scheduleBefore: { paidWei: before.paid.toString(), payments: before.payments.toString() },
+    scheduleAfter: { paidWei: after.paid.toString(), payments: after.payments.toString() },
+    ownerBalanceBeforeWei: balanceBefore.toString(),
+    ownerBalanceAfterWei: balanceAfter.toString(),
+    explorer: `https://explore.qore.network/tx/${tx.hash}`,
+  };
+  const file = repoFile(path.join("deployments", "leash-rejection.json"));
+  fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
+  console.log(`record written to ${path.relative(process.cwd(), file)}`);
+
+  if (outcome === "refused-tx-level" || outcome === "refused-by-spending-rule") {
+    if (!scheduleUnchanged || !balanceUnchanged) {
+      throw new Error("The chain refused the call, but on-chain state moved anyway — investigate before trusting the leash.");
+    }
+    console.log("LEASH REJECTION RECORDED: the chain refused the forbidden execution; nothing moved.");
+    return;
+  }
+  throw new Error(`The forbidden call was NOT refused (${outcome}). See deployments/leash-rejection.json — do not claim a leash rejection.`);
+}
+
 async function pay(): Promise<void> {
   const owner = await ownerAccount();
   const agent = agentKey();
@@ -433,6 +596,46 @@ async function pay(): Promise<void> {
   printSchedule(before);
   if (!before.due) {
     throw new Error(`Schedule ${SCHEDULE_ID} is not due (${before.reason}) — sending nothing.`);
+  }
+
+  // Authenticated messaging (scripts/intent.ts): if the owner signed an
+  // intent for exactly this payment, verify it before relaying — the
+  // ML-DSA-87 signature must be valid under the owner's ON-CHAIN
+  // registered key and the intent must match the live schedule. Any
+  // mismatch refuses the relay. With --require-intent a missing intent
+  // refuses it too; without the flag a missing intent only warns, and
+  // the payment proceeds under the contract's caps and the leash's
+  // spending rule alone.
+  const requireIntent = process.argv.includes("--require-intent");
+  const nextPayment = before.payments + 1n;
+  const intentPath = intentFilePath(SCHEDULE_ID, nextPayment);
+  if (fs.existsSync(intentPath)) {
+    const signed = loadSignedIntent(intentPath);
+    const problems = await verifySignedIntent(signed, {
+      rest: REST,
+      ownerCosmos: owner.cosmos,
+      contract,
+      schedule: before,
+    });
+    if (problems.length > 0) {
+      throw new Error(
+        `Signed intent ${path.relative(process.cwd(), intentPath)} does not verify — refusing to relay: ${problems.join("; ")}`,
+      );
+    }
+    console.log(
+      `intent verified: ML-DSA-87 signature valid under the owner's registered key; ` +
+        `authorises schedule ${SCHEDULE_ID} payment #${nextPayment}`,
+    );
+  } else if (requireIntent) {
+    throw new Error(
+      `--require-intent: no signed intent for schedule ${SCHEDULE_ID} payment #${nextPayment} ` +
+        `(${path.relative(process.cwd(), intentPath)}). Sign one with: npx tsx scripts/intent.ts sign ${SCHEDULE_ID}`,
+    );
+  } else {
+    console.log(
+      `intent: none for schedule ${SCHEDULE_ID} payment #${nextPayment} — ` +
+        `proceeding under the contract's caps and the leash's spending rule only`,
+    );
   }
 
   const digestVersion = await resolveEvmAuthDigestVersion({ rest: REST });
@@ -471,11 +674,11 @@ async function pay(): Promise<void> {
   console.log("LEASHED PAYMENT DONE.");
 }
 
-const commands: Record<string, () => Promise<void>> = { status, setup, pay };
+const commands: Record<string, () => Promise<void>> = { status, setup, pay, reject };
 const cmd = process.argv[2] ?? "status";
 const run = commands[cmd];
 if (!run) {
-  console.error(`Unknown command "${cmd}". Use: status | setup | pay`);
+  console.error(`Unknown command "${cmd}". Use: status | setup | pay | reject`);
   process.exit(1);
 }
 run().catch((err: unknown) => {

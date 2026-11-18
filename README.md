@@ -105,13 +105,36 @@ owner relays it, paying the fee. The chain checks the spending rule before
 the call runs, and the EVM call executes from the owner's address, so the
 contract sees `msg.sender == owner`. No EVM window is needed on either
 account for this path — the rule, not the window, is what bounds the agent
-here. One leashed payment has actually run: schedule 1 went from 0.10 to
+here. Two leashed payments have actually run: schedule 1 went from 0.10 to
 0.15 QOR paid (3/10 payments) in
 [tx `FA5A2A89…49D70`](https://explore.qore.network/tx/FA5A2A898B805B7FBD476F42538D8BA1D1F0212B8BB172A0DEB54468B4149D70)
-(block 10159020, 16 Nov 2026; the agent's authenticator nonce is now 1).
-The leashed payment has no separate EVM transaction hash — the EVM call
-executes inside the Cosmos `MsgExecuteEVM` transaction, so the Cosmos hash
-plus the schedule state change is the proof.
+(block 10159020, 16 Nov 2026), and from 0.20 to 0.25 QOR paid (5/10
+payments) in
+[tx `456F314D…9FDDD76`](https://explore.qore.network/tx/456F314DFC5A58E2052E592EA868E679CBD166C0981E80FB3AFE4842F9FDDD76)
+(block 10335976, 19 Nov 2026) — the second one relayed only after the
+runner verified the owner's ML-DSA-87-signed payment intent (see
+"Authenticated messaging" below). The leashed payment has no separate EVM
+transaction hash — the EVM call executes inside the Cosmos `MsgExecuteEVM`
+transaction, so the Cosmos hash plus the schedule state change is the
+proof.
+
+**The rule bites — proven on-chain.** On 19 Nov 2026 the agent signed a
+meta-transaction the rule forbids — `withdraw(uint256)` on the guard
+contract, a function outside the allowlist (which permits only
+`executePayment`) — and the owner relayed it
+([tx `FEF47E6B…43F801`](https://explore.qore.network/tx/FEF47E6B1BD611AC80D53C59F3C760FC355A2F5907363AE3530F07604343F801),
+block 10335955). The relay transaction landed with code 0, but the
+execution was refused inside it: the chain emitted an
+`abstractaccount_execution_failed` event with the reason *"a linked key
+with a spending rule may call 0xAc31FB4F4b85F29F6DC72e8485Fa9188b37f3B6E
+with data only if the rule lists the call in allowed_evm_calls …
+authenticator not permitted for this action"*. Schedule 1 and the owner's
+contract balance were verified unchanged afterwards (0.20/0.50 QOR, 4/10;
+0.10 QOR). Full record:
+[`deployments/leash-rejection.json`](deployments/leash-rejection.json)
+(re-run with `npx tsx scripts/leash.ts reject`). One thing the run
+taught us: the refused attempt still consumed authenticator nonce 1 — the
+next leashed payment used nonce 2.
 
 Two honest notes. First, the authenticator view reports
 `has_spend_rule: false`: that field means a rule attached to the key
@@ -126,6 +149,48 @@ drill-day `scripts/drill-pay.ts`) keeps working independently of the leash.
 npx tsx scripts/leash.ts status   # abstract account, rules, authenticators, schedule 1
 npx tsx scripts/leash.ts setup    # create the account + link the agent (idempotent)
 npx tsx scripts/leash.ts pay      # pay schedule 1 once through the leash
+npx tsx scripts/leash.ts reject   # prove the rule bites: relay one forbidden
+                                  # call and record the chain's refusal
+```
+
+## Authenticated messaging: ML-DSA-87 payment intents
+
+Before a leashed payment is relayed, the owner signs a **payment
+intent** — a small JSON message naming the contract, the schedule, the
+payment number, the payee, and the exact amount — with their ML-DSA-87
+key, and the runner verifies that signature before executing
+(`scripts/intent.ts`, full write-up in
+[`docs/AUTHENTICATED_MESSAGING.md`](docs/AUTHENTICATED_MESSAGING.md)):
+
+- The signature is a real ML-DSA-87 (Dilithium-5) signature (`pqcSign`
+  from `@qorechain/sdk`) made with the owner's ML-DSA-87 key, derived
+  from the owner's mnemonic — the same key the chain already has
+  registered for the account.
+- Verification checks the signature against the owner's **on-chain
+  registered** PQC key (fetched from REST, never trusted from the file),
+  and checks the intent against the schedule's live state: payee,
+  amount, expiry, and `paymentNumber == payments + 1`, so an intent
+  authorises exactly one payment and cannot be replayed.
+- `leash.ts pay` verifies a signed intent whenever one exists for the
+  next payment and refuses to relay on any mismatch; with
+  `--require-intent` it refuses to relay without one. The second
+  leashed payment (19 Nov 2026, tx `456F314D…9FDDD76`) ran in strict
+  mode against
+  [`deployments/intents/intent-1-5.json`](deployments/intents/intent-1-5.json).
+
+Honest scope: verification is **off-chain**, by the runner, before
+relaying. The contract does not verify ML-DSA signatures (no
+in-contract `pqcVerify`), so a runner that skipped verification could
+still pay within the contract's caps and the leash's rule. The layer
+adds a post-quantum-signed audit trail and a pre-execution gate in the
+honest runner — it is not a third on-chain enforcement layer. Payment
+intents are public audit records by design, so nothing here is
+ML-KEM-sealed; there is no secret in a payment authorisation to protect.
+
+```bash
+npx tsx scripts/intent.ts sign 1                            # sign the next payment's intent
+npx tsx scripts/intent.ts verify deployments/intents/intent-1-5.json   # verify a signed intent
+npx tsx scripts/leash.ts pay --require-intent              # pay only with a verified intent
 ```
 
 ## Category requirements
@@ -137,8 +202,8 @@ npx tsx scripts/leash.ts pay      # pay schedule 1 once through the leash
 | Value limits | `amountPerPayment` per payment + `totalCap` per schedule. |
 | Duration limits | `intervalSeconds` + `expiry` per schedule. |
 | Target limits | One allowlisted payee per schedule; the contract pays nobody else. |
-| Smart-account spending rules | A real abstract-account layer on top of the contract: the agent key is linked to the owner's abstract account with the `evm` permission and a chain-enforced spending rule (see "The leash" below). |
-| Authenticated messaging | Only the owner-authorised agent address may execute payments; the agent authenticates with its own key inside its own PQ window — or, on the leashed path, with an EIP-191-signed meta-transaction the chain checks against its spending rule. |
+| Smart-account spending rules | A real abstract-account layer on top of the contract: the agent key is linked to the owner's abstract account with the `evm` permission and a chain-enforced spending rule — and the rule has been proven to bite: a forbidden `withdraw` call was refused on-chain with an `abstractaccount_execution_failed` event (see "The leash" below). |
+| Authenticated messaging | Before a leashed payment is relayed, the owner signs a payment intent with their ML-DSA-87 key and the runner verifies the signature against the owner's on-chain registered PQC key plus the live schedule (see "Authenticated messaging" below). The agent also authenticates with its own key inside its own PQ window on the EOA path, and with an EIP-191-signed meta-transaction on the leashed path. |
 
 ## Repository layout
 
@@ -151,16 +216,23 @@ scripts/setup-demo.ts           deposit + demo schedules + agent authorisation
 scripts/agent.ts                the off-chain agent runner
 scripts/leash.ts                abstract-account leash: link the agent key
                                 with a chain-enforced spending rule, pay
-                                schedule 1 through a relayed meta-transaction
+                                schedule 1 through a relayed meta-transaction,
+                                prove the rule bites (reject)
+scripts/intent.ts               authenticated messaging: ML-DSA-87-signed
+                                payment intents (sign / verify), checked by
+                                the leash runner before relaying
 scripts/demo-rejection.ts       demonstrate an on-chain limit rejection
 scripts/render-check.mjs        Playwright render check of the live demo
 scripts/prepare-env.ts          one-time local env setup (writes .env files)
 test/billpay-guard.test.ts      contract tests (Ganache local chain)
+test/intent.test.ts             authenticated-messaging tests (offline)
 src/                            React dashboard (Vite + wagmi + RainbowKit)
 docs/demo.mp4                   demo video (real screen recording, ≤ 3 min)
 docs/featured.png               featured image for the project page
 deployments/testnet.json        deployment record (address, hashes, explorer links)
-deployments/demo.json           demo evidence (schedules, payments, rejection)
+deployments/demo.json           demo evidence (schedules, payments, rejections)
+deployments/leash-rejection.json  the chain's refusal of a forbidden leashed call
+deployments/intents/            signed ML-DSA-87 payment intents (public data)
 ```
 
 ## Run it yourself (testnet)
@@ -216,18 +288,24 @@ the abstract-account leash (see "The leash" above), bringing the total to
 **5 payments, 0.35 QOR**. A sixth payment (schedule 1, 0.05 QOR) ran
 18 Nov 2026 as the Q-Day Drill proof (`scripts/drill-pay.ts`, tx
 `0x96d84888…16f502`, block 10286574), bringing the total to **6 payments,
-0.40 QOR**. Two further payment attempts were **rejected
+0.40 QOR**. A seventh payment (schedule 1, 0.05 QOR) ran 19 Nov 2026
+through the leash, gated by the owner's verified ML-DSA-87 payment intent
+(Cosmos tx `456F314D…9FDDD76`, block 10335976), bringing the total to **7
+payments, 0.45 QOR**. Two further payment attempts were **rejected
 on-chain** (transactions mined with status `reverted`): one too-soon
 (interval not elapsed) and one cap-reaching (a third 0.1 QOR payment would
-have exceeded schedule 0's 0.25 QOR cap). All hashes are recorded in
+have exceeded schedule 0's 0.25 QOR cap). A third refusal happened at the
+leash layer: a forbidden `withdraw` call was refused by the chain's
+spending-rule check (see "The leash" above). All hashes are recorded in
 [`deployments/demo.json`](deployments/demo.json) — nothing here claims an
 on-chain result that has not happened.
 
-Live state, re-verified 18 Nov 2026 after the Q-Day Drill (read back from
-the contract): the guard holds **0.10 QOR** (0.5 QOR deposit − 0.40 QOR
-paid); schedule 0 has paid 0.2 / 0.25 QOR and is `cap-reached`; schedule 1
-has paid 0.20 / 0.5 QOR (4/10 payments) and is `due`. Both schedules
-expire 15 Dec 2026.
+Live state, re-verified 19 Nov 2026 after the intent-gated leashed
+payment (read back from the contract): the guard holds **0.05 QOR** (0.5
+QOR deposit − 0.45 QOR paid); schedule 0 has paid 0.2 / 0.25 QOR and is
+`cap-reached`; schedule 1 has paid 0.25 / 0.5 QOR (5/10 payments) and is
+`due` again once its 60 s interval elapses. Both schedules expire 15 Dec
+2026.
 
 ## Limitations — read this
 
@@ -246,6 +324,13 @@ expire 15 Dec 2026.
   `billpay-agent` rule permits `executePayment` on any schedule id; the
   per-schedule caps (which schedule, how much, how often) are enforced by
   the contract, not by the rule.
+- **Payment intents are verified off-chain, not by the contract.** The
+  ML-DSA-87 intent layer (`scripts/intent.ts`) is a pre-execution gate
+  in the runner plus a signed audit trail; the contract has no
+  in-contract `pqcVerify` and cannot check intents. A runner that
+  skipped verification could still pay within the contract's caps and
+  the leash's rule. Intents currently gate the leashed path only, not
+  the EOA path (`scripts/agent.ts`).
 - **Owner-key compromise is out of scope.** The guard protects against a
   compromised *agent*; if the owner's own key is stolen, the thief is the
   owner as far as the contract is concerned.
