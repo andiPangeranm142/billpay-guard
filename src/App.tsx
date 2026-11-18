@@ -22,10 +22,10 @@ import { billPayGuardAbi } from "../contracts/BillPayGuard.artifact.js";
 import {
   BILLPAY_GUARD_ADDRESS,
   CONTRACT_DEPLOYED,
-  DEPLOY_BLOCK,
   EXPLORER_URL,
   TESTNET_CHAIN_ID,
 } from "./config.js";
+import { RECORDED_PAYMENTS, type RecordedPayment } from "./evidence.js";
 
 function shorten(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -207,37 +207,162 @@ function useSchedules() {
   return { count: count ?? 0n, schedules, isLoading };
 }
 
+const PAYMENT_EVENT = parseAbiItem(
+  "event PaymentExecuted(uint256 indexed scheduleId, address indexed owner, address indexed payee, uint256 amount, uint256 paid, uint256 payments)",
+);
+
+/**
+ * The Diana EVM node rejects eth_getLogs over wide block ranges (even
+ * 10,000 blocks fails), and deploy-to-latest spans ~182,000 blocks, so
+ * the history cannot be scanned live in one call. It is built from
+ * three sources instead, deduplicated by transaction hash:
+ *
+ * 1. RECORDED_PAYMENTS (src/evidence.ts, generated from
+ *    deployments/demo.json) — the verified on-chain payments, rendered
+ *    immediately so the section never hangs on "Loading…".
+ * 2. Targeted re-verification: each recorded payment is re-read with a
+ *    single-block getLogs call (fromBlock == toBlock == its block,
+ *    always inside the node's range limit); the on-chain row replaces
+ *    the recorded one when found. Results are cached per block — a
+ *    confirmed payment's event never changes.
+ * 3. A short backward scan from latest (RECENT_SCAN_CHUNKS chunks of
+ *    LOG_CHUNK_BLOCKS blocks) that picks up payments made after the
+ *    recorded evidence was last generated — e.g. a payment executed
+ *    live while the demo is open.
+ *
+ * The leashed payment (block 10159020) has no EVM log at all — its
+ * MsgExecuteEVM execution leaves nothing for eth_getLogs to find — so
+ * its recorded entry is its only record, and the table links its
+ * Cosmos transaction hash.
+ */
+const LOG_CHUNK_BLOCKS = 100;
+const RECENT_SCAN_CHUNKS = 10;
+
+function logToRow(log: {
+  args: {
+    scheduleId?: bigint;
+    owner?: Address;
+    payee?: Address;
+    amount?: bigint;
+    paid?: bigint;
+    payments?: bigint;
+  };
+  blockNumber: bigint;
+  transactionHash: string;
+}): PaymentRow {
+  return {
+    scheduleId: log.args.scheduleId as bigint,
+    owner: log.args.owner as Address,
+    payee: log.args.payee as Address,
+    amount: log.args.amount as bigint,
+    paid: log.args.paid as bigint,
+    payments: log.args.payments as bigint,
+    blockNumber: log.blockNumber,
+    transactionHash: log.transactionHash,
+  };
+}
+
+function recordedToRow(p: RecordedPayment): PaymentRow {
+  return {
+    scheduleId: BigInt(p.scheduleId),
+    owner: p.owner as Address,
+    payee: p.payee as Address,
+    amount: parseEther(p.amountQor),
+    paid: parseEther(p.paidQor),
+    payments: BigInt(p.payments),
+    blockNumber: BigInt(p.block),
+    // The leashed payment has no EVM tx; link its Cosmos tx instead.
+    transactionHash: p.evmTx ?? p.cosmosTx ?? "",
+  };
+}
+
+/** Recorded rows, newest first — rendered immediately, before any RPC. */
+const RECORDED_ROWS: PaymentRow[] = RECORDED_PAYMENTS.map(recordedToRow).sort((a, b) =>
+  a.blockNumber > b.blockNumber ? -1 : 1,
+);
+
+/** On-chain verification results per recorded block (null = no log found). */
+const verifiedByBlock = new Map<number, PaymentRow | null>();
+
 function usePaymentHistory() {
   const publicClient = usePublicClient();
   return useQuery({
     queryKey: ["paymentHistory", BILLPAY_GUARD_ADDRESS],
     enabled: CONTRACT_DEPLOYED && !!publicClient,
     refetchInterval: 20000,
-    queryFn: async (): Promise<PaymentRow[]> => {
-      if (!publicClient) return [];
-      const latest = await publicClient.getBlockNumber();
-      const fromBlock = DEPLOY_BLOCK ?? (latest > 200000n ? latest - 200000n : 0n);
-      const logs = await publicClient.getLogs({
-        address: BILLPAY_GUARD_ADDRESS as Address,
-        event: parseAbiItem(
-          "event PaymentExecuted(uint256 indexed scheduleId, address indexed owner, address indexed payee, uint256 amount, uint256 paid, uint256 payments)",
-        ),
-        fromBlock,
-        toBlock: "latest",
-      });
-      return logs
-        .map((log) => ({
-          scheduleId: log.args.scheduleId as bigint,
-          owner: log.args.owner as Address,
-          payee: log.args.payee as Address,
-          amount: log.args.amount as bigint,
-          paid: log.args.paid as bigint,
-          payments: log.args.payments as bigint,
-          blockNumber: log.blockNumber,
-          transactionHash: log.transactionHash,
-        }))
-        .sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : 1))
-        .slice(0, 20);
+    queryFn: async (): Promise<{ rows: PaymentRow[]; liveFailed: boolean }> => {
+      const rows = new Map<string, PaymentRow>();
+      for (const r of RECORDED_ROWS) rows.set(r.transactionHash.toLowerCase(), r);
+      let liveFailed = false;
+      if (!publicClient) return { rows: [...rows.values()], liveFailed: true };
+
+      // 1. Targeted re-verification of each recorded payment (single-block
+      // ranges, cached — a confirmed event never changes).
+      const verified = await Promise.all(
+        RECORDED_PAYMENTS.filter((p) => p.evmTx).map(async (p) => {
+          if (verifiedByBlock.has(p.block)) return verifiedByBlock.get(p.block);
+          try {
+            const logs = await publicClient.getLogs({
+              address: BILLPAY_GUARD_ADDRESS as Address,
+              event: PAYMENT_EVENT,
+              fromBlock: BigInt(p.block),
+              toBlock: BigInt(p.block),
+            });
+            const log =
+              logs.find((l) => l.transactionHash.toLowerCase() === p.evmTx!.toLowerCase()) ??
+              logs[0];
+            const row = log ? logToRow(log) : null;
+            verifiedByBlock.set(p.block, row);
+            return row;
+          } catch {
+            liveFailed = true;
+            return undefined;
+          }
+        }),
+      );
+      for (const row of verified) {
+        if (row) rows.set(row.transactionHash.toLowerCase(), row);
+      }
+
+      // 2. Short backward scan from latest for payments newer than the
+      // recorded evidence (100-block chunks, inside the node limit).
+      try {
+        const latest = await publicClient.getBlockNumber();
+        const chunkResults = await Promise.allSettled(
+          Array.from({ length: RECENT_SCAN_CHUNKS }, (_, i) => {
+            const to = latest - BigInt(i * LOG_CHUNK_BLOCKS);
+            const from =
+              to >= BigInt(LOG_CHUNK_BLOCKS - 1) ? to - BigInt(LOG_CHUNK_BLOCKS - 1) : 0n;
+            return publicClient.getLogs({
+              address: BILLPAY_GUARD_ADDRESS as Address,
+              event: PAYMENT_EVENT,
+              fromBlock: from,
+              toBlock: to,
+            });
+          }),
+        );
+        for (const res of chunkResults) {
+          if (res.status === "fulfilled") {
+            for (const log of res.value) {
+              const row = logToRow(log);
+              if (!rows.has(row.transactionHash.toLowerCase())) {
+                rows.set(row.transactionHash.toLowerCase(), row);
+              }
+            }
+          } else {
+            liveFailed = true;
+          }
+        }
+      } catch {
+        liveFailed = true;
+      }
+
+      return {
+        rows: [...rows.values()]
+          .sort((a, b) => (a.blockNumber > b.blockNumber ? -1 : 1))
+          .slice(0, 20),
+        liveFailed,
+      };
     },
   });
 }
@@ -247,6 +372,9 @@ export function App() {
   const queryClient = useQueryClient();
   const { count, schedules, isLoading: schedulesLoading } = useSchedules();
   const history = usePaymentHistory();
+  // Recorded payments render immediately; the live query only re-verifies
+  // them and adds newer ones, so this section never hangs on loading.
+  const displayRows = history.data?.rows ?? RECORDED_ROWS;
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
 
@@ -555,11 +683,18 @@ export function App() {
 
             <div style={styles.card}>
               <h2 style={styles.h2}>Payment history</h2>
-              {history.isLoading && <p style={styles.note}>Loading payment events…</p>}
-              {history.data && history.data.length === 0 && (
+              {displayRows.length === 0 && history.isLoading && (
+                <p style={styles.note}>Loading payment events…</p>
+              )}
+              {displayRows.length === 0 && !history.isLoading && (
                 <p style={styles.note}>No payments recorded yet.</p>
               )}
-              {history.data && history.data.length > 0 && (
+              {history.data?.liveFailed && displayRows.length > 0 && (
+                <p style={styles.note}>
+                  Live chain refresh failed — showing recorded payments.
+                </p>
+              )}
+              {displayRows.length > 0 && (
                 <div style={{ overflowX: "auto" }}>
                   <table style={styles.table}>
                     <thead>
@@ -573,7 +708,7 @@ export function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {history.data.map((p) => (
+                      {displayRows.map((p) => (
                         <tr key={p.transactionHash}>
                           <td style={styles.td}>#{p.scheduleId.toString()}</td>
                           <td style={styles.td}>
