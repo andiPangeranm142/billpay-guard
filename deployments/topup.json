@@ -1,0 +1,14 @@
+{
+  "depositedQor": "0.3",
+  "from": "0x326697b1a1EAd2E0FCa024754Fd5530D7e5cBDee",
+  "contract": "0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e",
+  "evmTx": "0x9099a9d1a3ee91c91da95699e81410639a8fdbaad24f5304c764001491d33deb",
+  "cosmosTx": "A03C17E551C841A3A278DB886DC6D368137959BC3EEC8D508954A66862273BBD",
+  "block": 10367997,
+  "ownerBalanceBeforeWei": "50000000000000000",
+  "ownerBalanceAfterWei": "350000000000000000",
+  "contractBalanceBeforeWei": "50000000000000000",
+  "contractBalanceAfterWei": "350000000000000000",
+  "toppedUpAt": "2026-11-19T10:04:03.914Z",
+  "explorer": "https://explore.qore.network/tx/0x9099a9d1a3ee91c91da95699e81410639a8fdbaad24f5304c764001491d33deb"
+}

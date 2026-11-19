@@ -81,6 +81,7 @@ async function assertReverts(
   functionName: string,
   args: unknown[],
   account: TestAccount,
+  value?: bigint,
 ): Promise<void> {
   const hash = await clients.wallet.writeContract({
     address: contract,
@@ -90,6 +91,7 @@ async function assertReverts(
     account,
     chain: localChain,
     gas: 500000n,
+    ...(value !== undefined ? { value } : {}),
   });
   const receipt = await clients.public.waitForTransactionReceipt({ hash });
   assert.equal(receipt.status, "reverted", `${functionName} should revert on-chain`);
@@ -375,5 +377,83 @@ describe("BillPayGuard contract", () => {
     assert.equal(due, false);
     assert.equal(reason, "insufficient-balance");
     await assertReverts(clients, contract, "executePayment", [2n], owner);
+  });
+
+  it("rejects zero-value deposits and withdrawals, and a zero agent address", async () => {
+    await assertReverts(clients, contract, "deposit", [], owner, 0n);
+    await assertReverts(clients, contract, "withdraw", [0n], owner);
+    await assertReverts(clients, contract, "setAgent", ["0x0000000000000000000000000000000000000000"], owner);
+    // The reverts moved nothing.
+    assert.equal(await readBigint("balances", [owner.address]), 0n);
+  });
+
+  it("keeps a second owner's funds and schedules fully independent", async () => {
+    await write("deposit", [], stranger, parseEther("1"));
+    const now = await latestTimestamp(clients);
+    await write("createSchedule", [
+      landlord.address, parseEther("0.1"), parseEther("0.5"), 3n, 0n, now + 86400n,
+    ], stranger);
+    assert.equal(await readBigint("scheduleCount"), 4n);
+    // The stranger pays their own schedule directly (owner path).
+    await write("executePayment", [3n], stranger);
+    assert.equal(await readBigint("balances", [stranger.address]), parseEther("0.9"));
+    // The first owner's balance and agent are untouched.
+    assert.equal(await readBigint("balances", [owner.address]), 0n);
+    assert.equal(
+      await readAddress("agents", [owner.address]),
+      "0x0000000000000000000000000000000000000000",
+    );
+    assert.equal(await readBigint("totalPayments"), 4n);
+  });
+
+  it("re-setting the agent replaces the old one", async () => {
+    await write("deposit", [], owner, parseEther("0.5"));
+    await write("setAgent", [agent.address], owner);
+    // Schedule 2 (0.05/payment, 1/10 paid) is due again; the agent pays.
+    await write("executePayment", [2n], agent);
+    assert.equal(await readBigint("totalPayments"), 5n);
+    // Replace the agent: the old key can no longer pay, the new one can.
+    await write("setAgent", [stranger.address], owner);
+    await assertReverts(clients, contract, "executePayment", [2n], agent);
+    await write("executePayment", [2n], stranger);
+    assert.equal(await readBigint("totalPayments"), 6n);
+    assert.equal(await readBigint("balances", [owner.address]), parseEther("0.4"));
+    await write("revokeAgent", [], owner);
+  });
+
+  it("enforces expiry per payment, not just at creation", async () => {
+    const now = await latestTimestamp(clients);
+    await write("createSchedule", [
+      landlord.address, parseEther("0.05"), parseEther("0.5"), 10n, 0n, now + 120n,
+    ], owner);
+    // Pays fine while the schedule is live…
+    await write("executePayment", [4n], owner);
+    assert.equal(await readBigint("totalPayments"), 7n);
+    // …then the same schedule refuses once its expiry passes.
+    await increaseTime(clients, 121);
+    const [due, reason] = await checkDue(4n);
+    assert.equal(due, false);
+    assert.equal(reason, "expired");
+    await assertReverts(clients, contract, "executePayment", [4n], owner);
+  });
+
+  it("emits Deposited and Withdrawn with the running balance", async () => {
+    const before = await readBigint("balances", [owner.address]);
+    const depositReceipt = await write("deposit", [], owner, parseEther("0.2"));
+    const deposited = decodeLogs(depositReceipt).filter((e) => e.eventName === "Deposited");
+    assert.equal(deposited.length, 1);
+    const d = deposited[0].args as unknown as { owner: string; amount: bigint; balance: bigint };
+    assert.equal(d.owner.toLowerCase(), owner.address.toLowerCase());
+    assert.equal(d.amount, parseEther("0.2"));
+    assert.equal(d.balance, before + parseEther("0.2"));
+
+    const withdrawReceipt = await write("withdraw", [parseEther("0.1")], owner);
+    const withdrawn = decodeLogs(withdrawReceipt).filter((e) => e.eventName === "Withdrawn");
+    assert.equal(withdrawn.length, 1);
+    const w = withdrawn[0].args as unknown as { owner: string; amount: bigint; balance: bigint };
+    assert.equal(w.owner.toLowerCase(), owner.address.toLowerCase());
+    assert.equal(w.amount, parseEther("0.1"));
+    assert.equal(w.balance, before + parseEther("0.1"));
+    assert.equal(await readBigint("balances", [owner.address]), before + parseEther("0.1"));
   });
 });

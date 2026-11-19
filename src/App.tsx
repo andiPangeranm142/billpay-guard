@@ -682,6 +682,137 @@ export function App() {
             </div>
 
             <div style={styles.card}>
+              <h2 style={styles.h2}>Agent leash — chain-enforced spending rules</h2>
+              <p style={styles.note}>
+                A second layer on top of the contract's own caps: the agent key is linked to the
+                owner's abstract account (session_based,
+                <span style={styles.mono}> qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y</span>) as an
+                authenticator with the <span style={styles.mono}>evm</span> permission only, bound
+                by spending rule <span style={styles.mono}>billpay-agent</span>. The chain checks
+                the rule before any EVM call runs — the agent cannot call anything the rule does
+                not list, even if its key is stolen.
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <table style={styles.table}>
+                  <tbody>
+                    <tr>
+                      <td style={styles.td}>Per execution</td>
+                      <td style={styles.td}>50,000 uqor (0.05 QOR)</td>
+                    </tr>
+                    <tr>
+                      <td style={styles.td}>Per day</td>
+                      <td style={styles.td}>500,000 uqor (0.50 QOR)</td>
+                    </tr>
+                    <tr>
+                      <td style={styles.td}>Allowed EVM calls</td>
+                      <td style={styles.td}>
+                        <span style={styles.mono}>executePayment(uint256)</span> only, on the guard
+                        contract (selector <span style={styles.mono}>0x162a0cf8</span>)
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={styles.td}>Authenticator expiry</td>
+                      <td style={styles.td}>15 Dec 2026 19:27 UTC</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style={styles.note}>
+                The rule bites — proven on-chain. On 19 Nov 2026 the agent signed a forbidden{" "}
+                <span style={styles.mono}>withdraw(uint256)</span> call and the owner relayed it;
+                the chain refused the execution inside Cosmos tx{" "}
+                <a
+                  style={styles.link}
+                  href="https://explore.qore.network/tx/FEF47E6B1BD611AC80D53C59F3C760FC355A2F5907363AE3530F07604343F801"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span style={styles.mono}>FEF47E6B…43F801</span>
+                </a>{" "}
+                (block 10335955) with an{" "}
+                <span style={styles.mono}>abstractaccount_execution_failed</span> event. Schedule 1
+                and the owner's contract balance were verified unchanged afterwards. Three leashed
+                payments have run so far (
+                <a
+                  style={styles.link}
+                  href="https://explore.qore.network/tx/FA5A2A898B805B7FBD476F42538D8BA1D1F0212B8BB172A0DEB54468B4149D70"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span style={styles.mono}>FA5A2A89…49D70</span>
+                </a>
+                , block 10159020,{" "}
+                <a
+                  style={styles.link}
+                  href="https://explore.qore.network/tx/456F314DFC5A58E2052E592EA868E679CBD166C0981E80FB3AFE4842F9FDDD76"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span style={styles.mono}>456F314D…9FDDD76</span>
+                </a>
+                , block 10335976, and{" "}
+                <a
+                  style={styles.link}
+                  href="https://explore.qore.network/tx/A9F2CC2EA4A36BC28AC7AEE6E990DBE6D409F48C07B4F057FA2DC781D70A36CB"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span style={styles.mono}>A9F2CC2E…0A36CB</span>
+                </a>
+                , block 10368360). Rule source:{" "}
+                <a
+                  style={styles.link}
+                  href="https://api-testnet.qore.host/qorechain/abstractaccount/v1/accounts/qor1xfnf0vdpatfwpl9qy365l42np4l9e00wkzdg9y/spending_rules"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  spending_rules (REST)
+                </a>
+                ; runner:{" "}
+                <a
+                  style={styles.link}
+                  href="https://github.com/andiPangeranm142/billpay-guard/blob/main/scripts/leash.ts"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  scripts/leash.ts
+                </a>
+                .
+              </p>
+            </div>
+
+            <div style={styles.card}>
+              <h2 style={styles.h2}>Authenticated messaging — ML-DSA-87 payment intents</h2>
+              <p style={styles.note}>
+                Before a leashed payment is relayed, the owner signs a payment intent — contract,
+                schedule, payment number, payee, exact amount — with their ML-DSA-87 key, and the
+                runner verifies the signature against the owner's on-chain registered PQC key and
+                the intent against the live schedule. One intent authorises exactly one payment
+                (<span style={styles.mono}>paymentNumber == payments + 1</span>), so it cannot be
+                replayed or retargeted. Verification is off-chain, by the runner: the contract
+                itself does not check ML-DSA signatures. Signed intents are public audit records:{" "}
+                <a
+                  style={styles.link}
+                  href="https://github.com/andiPangeranm142/billpay-guard/tree/main/deployments/intents"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  deployments/intents
+                </a>
+                {" · "}
+                <a
+                  style={styles.link}
+                  href="https://github.com/andiPangeranm142/billpay-guard/blob/main/docs/AUTHENTICATED_MESSAGING.md"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  write-up
+                </a>
+                .
+              </p>
+            </div>
+
+            <div style={styles.card}>
               <h2 style={styles.h2}>Payment history</h2>
               {displayRows.length === 0 && history.isLoading && (
                 <p style={styles.note}>Loading payment events…</p>

@@ -68,6 +68,14 @@ import { fileURLToPath } from "node:url";
 
 import { billPayGuardAbi } from "../contracts/BillPayGuard.artifact.js";
 import { intentFilePath, loadSignedIntent, verifySignedIntent } from "./intent.js";
+import {
+  LEASH_AUTH_EXPIRY_UNIX,
+  LEASH_AUTH_LABEL,
+  LEASH_RULE_DAILY_UQOR,
+  LEASH_RULE_ID,
+  LEASH_RULE_PER_TX_UQOR,
+  allowedEvmCall,
+} from "./leash-rule.js";
 
 /** QoreChain testnet (qorechain-diana). Nothing else is allowed. */
 const CHAIN_ID = "qorechain-diana";
@@ -83,17 +91,8 @@ const EXPECTED_AGENT_EVM = "0x5dA52428DE0b9928105175CF00C6435B21AB4779";
 /** The schedule the leash pays. Schedule 0 is cap-reached; never touch it. */
 const SCHEDULE_ID = 1n;
 
-/**
- * The spending rule, mirroring schedule 1's caps: 0.05 QOR per payment,
- * 0.50 QOR total cap as the daily bound, only executePayment on the guard
- * contract. The authenticator expiry matches schedule 1's on-chain expiry
- * (1797362871 = 15 Dec 2026 19:27:51 UTC, from deployments/demo.json).
- */
-const RULE_ID = "billpay-agent";
-const RULE_PER_TX_UQOR = "50000";
-const RULE_DAILY_UQOR = "500000";
-const AUTH_EXPIRY_UNIX = 1797362871;
-const AUTH_LABEL = "BillPay Guard agent";
+// The spending rule constants (id, per-tx/daily limits, authenticator
+// expiry and label) live in ./leash-rule.ts, shared with the test suite.
 
 /** EVM gas the leashed call may use (executePayment costs well under this). */
 const EXEC_GAS_LIMIT = 200_000;
@@ -389,15 +388,15 @@ async function setup(): Promise<void> {
       pubkey: proof.pubkey,
       possessionProof: proof.possessionProof,
       permissions: ["evm"],
-      expiryUnix: AUTH_EXPIRY_UNIX,
-      label: AUTH_LABEL,
+      expiryUnix: LEASH_AUTH_EXPIRY_UNIX,
+      label: LEASH_AUTH_LABEL,
       spendingRule: {
-        id: RULE_ID,
+        id: LEASH_RULE_ID,
         enabled: true,
-        perTxLimit: RULE_PER_TX_UQOR,
-        dailyLimit: RULE_DAILY_UQOR,
+        perTxLimit: LEASH_RULE_PER_TX_UQOR,
+        dailyLimit: LEASH_RULE_DAILY_UQOR,
         allowedDenoms: ["uqor"],
-        allowedEvmCalls: [`${contract.toLowerCase()}/${selector}`],
+        allowedEvmCalls: [allowedEvmCall(contract, selector)],
         denomLimits: [],
       },
     });
@@ -413,16 +412,16 @@ async function setup(): Promise<void> {
   // it reads false here, exactly as on Fenestella's Verified account; the
   // key is still bound by the account-wide rule below.
   const rules = await spendingRulesOf(owner.cosmos);
-  const rule = rules.rules.find((r) => r.id === RULE_ID);
-  if (!rule || !rule.enabled || rule.perTxLimit !== BigInt(RULE_PER_TX_UQOR) || rule.dailyLimit !== BigInt(RULE_DAILY_UQOR)) {
-    throw new Error(`Spending rule ${RULE_ID} is missing or does not match: ${JSON.stringify(rules.rules)}`);
+  const rule = rules.rules.find((r) => r.id === LEASH_RULE_ID);
+  if (!rule || !rule.enabled || rule.perTxLimit !== BigInt(LEASH_RULE_PER_TX_UQOR) || rule.dailyLimit !== BigInt(LEASH_RULE_DAILY_UQOR)) {
+    throw new Error(`Spending rule ${LEASH_RULE_ID} is missing or does not match: ${JSON.stringify(rules.rules)}`);
   }
   const linked = (await authenticatorsOf(owner.cosmos)).find(
     (a) => a.pubkeyHex.toLowerCase() === agent.address.slice(2).toLowerCase() && !a.revoked,
   );
   if (!linked) throw new Error("The agent authenticator is not on chain after linking.");
   if (!linked.permissions.includes("evm")) throw new Error(`The agent authenticator lacks the evm permission: ${JSON.stringify(linked.permissions)}`);
-  console.log(`rule ${RULE_ID}: per-tx ${rule.perTxLimit} uqor, daily ${rule.dailyLimit} uqor, calls ${JSON.stringify(rule.allowedEvmCalls)}`);
+  console.log(`rule ${LEASH_RULE_ID}: per-tx ${rule.perTxLimit} uqor, daily ${rule.dailyLimit} uqor, calls ${JSON.stringify(rule.allowedEvmCalls)}`);
   console.log(
     `authenticator: ${linked.scheme} ${linked.pubkeyHex}, permissions ${JSON.stringify(linked.permissions)}, ` +
       `expiry ${linked.expiryUnix}, label "${linked.label}", has_spend_rule=${linked.hasSpendRule} (per-key rule; the account-wide rule above bounds the key)`,
@@ -477,13 +476,13 @@ async function reject(): Promise<void> {
 
   // Confirm the rule is in place and really does allow only executePayment.
   const rules = await spendingRulesOf(owner.cosmos);
-  const rule = rules.rules.find((r) => r.id === RULE_ID);
-  if (!rule || !rule.enabled) throw new Error(`Spending rule ${RULE_ID} is missing or disabled — nothing to test against.`);
+  const rule = rules.rules.find((r) => r.id === LEASH_RULE_ID);
+  if (!rule || !rule.enabled) throw new Error(`Spending rule ${LEASH_RULE_ID} is missing or disabled — nothing to test against.`);
   const allowed = rule.allowedEvmCalls;
-  if (allowed.length !== 1 || allowed[0] !== `${contract.toLowerCase()}/${selector}`) {
-    throw new Error(`Spending rule ${RULE_ID} does not match the expected allowlist: ${JSON.stringify(allowed)}`);
+  if (allowed.length !== 1 || allowed[0] !== allowedEvmCall(contract, selector)) {
+    throw new Error(`Spending rule ${LEASH_RULE_ID} does not match the expected allowlist: ${JSON.stringify(allowed)}`);
   }
-  console.log(`rule ${RULE_ID}: per-tx ${rule.perTxLimit} uqor, daily ${rule.dailyLimit} uqor, calls ${JSON.stringify(allowed)}`);
+  console.log(`rule ${LEASH_RULE_ID}: per-tx ${rule.perTxLimit} uqor, daily ${rule.dailyLimit} uqor, calls ${JSON.stringify(allowed)}`);
 
   const before = await scheduleState(contract);
   printSchedule(before);
@@ -543,7 +542,7 @@ async function reject(): Promise<void> {
   const record = {
     attemptedAt: new Date().toISOString(),
     rule: {
-      id: RULE_ID,
+      id: LEASH_RULE_ID,
       perTxLimitUqor: rule.perTxLimit.toString(),
       dailyLimitUqor: rule.dailyLimit.toString(),
       allowedDenoms: rule.allowedDenoms,

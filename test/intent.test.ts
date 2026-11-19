@@ -198,4 +198,153 @@ describe("payment intents", () => {
     assert.equal(intentFileName(1, 5), "intent-1-5.json");
     assert.equal(intentFileName(0, 1), "intent-0-1.json");
   });
+
+  it("rejects intents for the wrong payment number: zero, far ahead, and already paid", () => {
+    // paymentNumber 0 never authorises anything.
+    const zero = checkIntentAgainstSchedule(
+      { ...testIntent(), paymentNumber: 0 },
+      CONTRACT,
+      testSchedule(),
+    );
+    assert.equal(zero.length, 1);
+    assert.match(zero[0], /paymentNumber/);
+
+    // An intent for payment #99 does not authorise payment #5.
+    const ahead = checkIntentAgainstSchedule(
+      { ...testIntent(), paymentNumber: 99 },
+      CONTRACT,
+      testSchedule(),
+    );
+    assert.equal(ahead.length, 1);
+    assert.match(ahead[0], /paymentNumber/);
+
+    // Once payment #5 has run, the #5 intent is stale — replaying it
+    // matches nothing.
+    const stale = checkIntentAgainstSchedule(
+      testIntent(),
+      CONTRACT,
+      { ...testSchedule(), payments: 5n },
+    );
+    assert.equal(stale.length, 1);
+    assert.match(stale[0], /paymentNumber/);
+
+    // And a tampered paymentNumber breaks the signature too, so a
+    // replayed intent cannot even be re-aimed at the next payment.
+    const keypair = generatePqcKeypair();
+    const signed = signIntent(keypair, testIntent(), SIGNER);
+    assert.equal(
+      verifyIntentSignature({ ...signed, intent: { ...signed.intent, paymentNumber: 4 } }),
+      false,
+    );
+    assert.equal(
+      verifyIntentSignature({ ...signed, intent: { ...signed.intent, paymentNumber: 6 } }),
+      false,
+    );
+  });
+
+  it("rejects intents with the wrong version, kind, or chain", () => {
+    const wrongVersion = checkIntentAgainstSchedule(
+      { ...testIntent(), version: 2 },
+      CONTRACT,
+      testSchedule(),
+    );
+    assert.equal(wrongVersion.length, 1);
+    assert.match(wrongVersion[0], /version/);
+
+    const wrongKind = checkIntentAgainstSchedule(
+      { ...testIntent(), kind: "other-payment" },
+      CONTRACT,
+      testSchedule(),
+    );
+    assert.equal(wrongKind.length, 1);
+    assert.match(wrongKind[0], /kind/);
+
+    // An intent signed for mainnet is not valid on the Diana testnet.
+    const wrongChain = checkIntentAgainstSchedule(
+      { ...testIntent(), chainId: "qorechain-vladi" },
+      CONTRACT,
+      testSchedule(),
+    );
+    assert.equal(wrongChain.length, 1);
+    assert.match(wrongChain[0], /chainId/);
+  });
+
+  it("matches addresses case-insensitively, and the signature commits to the canonical bytes", () => {
+    // Checksummed addresses in the file still match the schedule.
+    assert.deepEqual(
+      checkIntentAgainstSchedule(
+        { ...testIntent(), contract: CONTRACT, payee: PAYEE },
+        CONTRACT,
+        testSchedule(),
+      ),
+      [],
+    );
+    // Canonical bytes lowercase the addresses, so the same intent signed
+    // from a checksummed spelling verifies identically.
+    const keypair = generatePqcKeypair();
+    const signed = signIntent(keypair, { ...testIntent(), contract: CONTRACT, payee: PAYEE }, SIGNER);
+    assert.equal(verifyIntentSignature(signed, keypair.publicKey), true);
+    assert.deepEqual(
+      canonicalIntentBytes({ ...testIntent(), contract: CONTRACT, payee: PAYEE }),
+      canonicalIntentBytes(testIntent()),
+    );
+  });
+
+  it("rejects a signature made for a different intent", () => {
+    const keypair = generatePqcKeypair();
+    const forFive = signIntent(keypair, testIntent(), SIGNER);
+    const forSix = signIntent(keypair, { ...testIntent(), paymentNumber: 6 }, SIGNER);
+    // Swapping the signatures between the two intents verifies neither.
+    assert.equal(
+      verifyIntentSignature({ ...forFive, signatureBase64: forSix.signatureBase64 }, keypair.publicKey),
+      false,
+    );
+    assert.equal(
+      verifyIntentSignature({ ...forSix, signatureBase64: forFive.signatureBase64 }, keypair.publicKey),
+      false,
+    );
+  });
+
+  it("canonicalises intents independently of the object's key order", () => {
+    const a = testIntent();
+    const reordered: PaymentIntent = {
+      expiryUnix: a.expiryUnix,
+      amountWei: a.amountWei,
+      payee: a.payee,
+      paymentNumber: a.paymentNumber,
+      scheduleId: a.scheduleId,
+      contract: a.contract,
+      chainId: a.chainId,
+      kind: a.kind,
+      version: a.version,
+    };
+    assert.deepEqual(canonicalIntentBytes(a), canonicalIntentBytes(reordered));
+    // A signature over one spelling verifies under the other.
+    const keypair = generatePqcKeypair();
+    const signed = signIntent(keypair, a, SIGNER);
+    assert.equal(verifyIntentSignature({ ...signed, intent: reordered }, keypair.publicKey), true);
+  });
+
+  it("loadSignedIntent rejects files that are not signed intents", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "billpay-intent-bad-"));
+    try {
+      const empty = path.join(dir, "empty.json");
+      fs.writeFileSync(empty, "{}\n");
+      assert.throws(() => loadSignedIntent(empty), /not a signed intent/);
+      const noSig = path.join(dir, "no-sig.json");
+      fs.writeFileSync(noSig, `${JSON.stringify({ intent: testIntent() })}\n`);
+      assert.throws(() => loadSignedIntent(noSig), /not a signed intent/);
+      assert.throws(() => loadSignedIntent(path.join(dir, "missing.json")), /ENOENT/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects empty signatures and empty public keys instead of throwing", () => {
+    const keypair = generatePqcKeypair();
+    const signed = signIntent(keypair, testIntent(), SIGNER);
+    assert.equal(verifyIntentSignature({ ...signed, signatureBase64: "" }), false);
+    assert.equal(verifyIntentSignature({ ...signed, publicKeyBase64: "" }), false);
+    assert.equal(verifyIntentSignature(signed, new Uint8Array(0)), false);
+  });
 });

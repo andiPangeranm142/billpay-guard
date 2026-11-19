@@ -120,5 +120,17 @@ export const RECORDED_PAYMENTS: RecordedPayment[] = [
     "executedBy": "agent (leashed, intent-verified)",
     "executedAt": "2026-11-18T20:36:12Z",
     "cosmosTx": "456F314DFC5A58E2052E592EA868E679CBD166C0981E80FB3AFE4842F9FDDD76"
+  },
+  {
+    "scheduleId": 1,
+    "owner": "0x326697b1a1EAd2E0FCa024754Fd5530D7e5cBDee",
+    "payee": "0x5dA52428DE0b9928105175CF00C6435B21AB4779",
+    "amountQor": "0.05",
+    "paidQor": "0.3",
+    "payments": 6,
+    "block": 10368360,
+    "executedBy": "agent (leashed, intent-verified)",
+    "executedAt": "2026-11-19T10:12:39Z",
+    "cosmosTx": "A9F2CC2EA4A36BC28AC7AEE6E990DBE6D409F48C07B4F057FA2DC781D70A36CB"
   }
 ];

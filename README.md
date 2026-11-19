@@ -24,7 +24,8 @@ payees. It does not swap, does not trade, and holds no price feeds.
 
 - Contract: [`0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e`](https://explore.qore.network/address/0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e) (deployed 15 Nov 2026, block 10151549, deploy tx `0x600dfc9301c97d178a3bc2676b1aa520dd4b2c7a15285f2f778f1198f1287c10`)
 - Live demo: https://andipangeranm142.github.io/billpay-guard/
-- Demo video: [`docs/demo.mp4`](docs/demo.mp4) (2:37, 1080p, real screen recording — includes a payment executed live during the recording)
+- Demo video: [`docs/demo.mp4`](docs/demo.mp4) (2:51, 1080p, real screen recording — includes the leash panel, the authenticated-messaging panel, and a leashed payment executed live during the recording with a verified ML-DSA-87 intent)
+- Top-up 19 Nov 2026: +0.30 QOR deposited ([tx `0x9099a9d1…d33deb`](https://explore.qore.network/tx/0x9099a9d1a3ee91c91da95699e81410639a8fdbaad24f5304c764001491d33deb), block 10367997) — the contract held 0.05 QOR but schedule 1 still owed 5 × 0.05 QOR; owner guard balance 0.05 → 0.35 QOR (0.30 QOR after payment #6). Record: [`deployments/topup.json`](deployments/topup.json).
 - Project page: [billpay-guard on build.qorechain.io](https://build.qorechain.io/p/billpay-guard) (Post-Quantum AI Agents; AI-Native Verified)
 
 Deployment record: [`deployments/testnet.json`](deployments/testnet.json).
@@ -105,7 +106,7 @@ owner relays it, paying the fee. The chain checks the spending rule before
 the call runs, and the EVM call executes from the owner's address, so the
 contract sees `msg.sender == owner`. No EVM window is needed on either
 account for this path — the rule, not the window, is what bounds the agent
-here. Two leashed payments have actually run: schedule 1 went from 0.10 to
+here. Three leashed payments have actually run: schedule 1 went from 0.10 to
 0.15 QOR paid (3/10 payments) in
 [tx `FA5A2A89…49D70`](https://explore.qore.network/tx/FA5A2A898B805B7FBD476F42538D8BA1D1F0212B8BB172A0DEB54468B4149D70)
 (block 10159020, 16 Nov 2026), and from 0.20 to 0.25 QOR paid (5/10
@@ -113,7 +114,13 @@ payments) in
 [tx `456F314D…9FDDD76`](https://explore.qore.network/tx/456F314DFC5A58E2052E592EA868E679CBD166C0981E80FB3AFE4842F9FDDD76)
 (block 10335976, 19 Nov 2026) — the second one relayed only after the
 runner verified the owner's ML-DSA-87-signed payment intent (see
-"Authenticated messaging" below). The leashed payment has no separate EVM
+"Authenticated messaging" below) — and from 0.25 to 0.30 QOR paid (6/10
+payments) in
+[tx `A9F2CC2E…0A36CB`](https://explore.qore.network/tx/A9F2CC2EA4A36BC28AC7AEE6E990DBE6D409F48C07B4F057FA2DC781D70A36CB)
+(block 10368360, 19 Nov 2026), executed live during the demo-video
+recording, again in strict `--require-intent` mode against
+[`deployments/intents/intent-1-6.json`](deployments/intents/intent-1-6.json).
+The leashed payment has no separate EVM
 transaction hash — the EVM call executes inside the Cosmos `MsgExecuteEVM`
 transaction, so the Cosmos hash plus the schedule state change is the
 proof.
@@ -176,7 +183,10 @@ key, and the runner verifies that signature before executing
   `--require-intent` it refuses to relay without one. The second
   leashed payment (19 Nov 2026, tx `456F314D…9FDDD76`) ran in strict
   mode against
-  [`deployments/intents/intent-1-5.json`](deployments/intents/intent-1-5.json).
+  [`deployments/intents/intent-1-5.json`](deployments/intents/intent-1-5.json),
+  and the third (19 Nov 2026, tx `A9F2CC2E…0A36CB`, live during the
+  demo-video recording) against
+  [`deployments/intents/intent-1-6.json`](deployments/intents/intent-1-6.json).
 
 Honest scope: verification is **off-chain**, by the runner, before
 relaying. The contract does not verify ML-DSA signatures (no
@@ -189,7 +199,7 @@ ML-KEM-sealed; there is no secret in a payment authorisation to protect.
 
 ```bash
 npx tsx scripts/intent.ts sign 1                            # sign the next payment's intent
-npx tsx scripts/intent.ts verify deployments/intents/intent-1-5.json   # verify a signed intent
+npx tsx scripts/intent.ts verify deployments/intents/intent-1-6.json   # verify a signed intent (against the live schedule — a used intent correctly fails the paymentNumber check)
 npx tsx scripts/leash.ts pay --require-intent              # pay only with a verified intent
 ```
 
@@ -221,11 +231,17 @@ scripts/leash.ts                abstract-account leash: link the agent key
 scripts/intent.ts               authenticated messaging: ML-DSA-87-signed
                                 payment intents (sign / verify), checked by
                                 the leash runner before relaying
+scripts/leash-rule.ts           the spending rule as pure logic (allowlist
+                                + per-tx/daily limits), shared by leash.ts
+                                and the offline test suite
+scripts/topup.ts                top up the owner's deposited guard balance
+                                (deposit() + on-chain re-verification)
 scripts/demo-rejection.ts       demonstrate an on-chain limit rejection
 scripts/render-check.mjs        Playwright render check of the live demo
 scripts/prepare-env.ts          one-time local env setup (writes .env files)
 test/billpay-guard.test.ts      contract tests (Ganache local chain)
 test/intent.test.ts             authenticated-messaging tests (offline)
+test/leash-rule.test.ts         spending-rule tests (offline, pure logic)
 src/                            React dashboard (Vite + wagmi + RainbowKit)
 docs/demo.mp4                   demo video (real screen recording, ≤ 3 min)
 docs/featured.png               featured image for the project page

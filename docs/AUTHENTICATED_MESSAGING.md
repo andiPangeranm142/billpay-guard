@@ -124,6 +124,16 @@ leashed path only.
   [`456F314D…9FDDD76`](https://explore.qore.network/tx/456F314DFC5A58E2052E592EA868E679CBD166C0981E80FB3AFE4842F9FDDD76)
   (block 10335976, 18 Nov 2026 20:36:12 UTC). Schedule 1 went from
   0.20/0.50 QOR (4/10) to 0.25/0.50 QOR (5/10).
+- **Intent for schedule 1 payment #6:**
+  `deployments/intents/intent-1-6.json`, signed 19 Nov 2026 10:12:27 UTC
+  by the same owner. It authorised leashed payment #6, Cosmos tx
+  [`A9F2CC2E…0A36CB`](https://explore.qore.network/tx/A9F2CC2EA4A36BC28AC7AEE6E990DBE6D409F48C07B4F057FA2DC781D70A36CB)
+  (block 10368360, 19 Nov 2026 10:12:39 UTC), executed live during the
+  demo-video v2 recording (`docs/demo.mp4`, scene 5) in strict
+  `--require-intent` mode. Schedule 1 went from 0.25/0.50 QOR (5/10) to
+  0.30/0.50 QOR (6/10). The same live-schedule note applies: verifying
+  it now correctly fails the paymentNumber check (6 is not the next
+  payment, 7), which is the anti-replay rule working as designed.
 
 ## Honest scope — read this
 
@@ -152,8 +162,10 @@ leashed path only.
 
 ## Tests
 
-`test/intent.test.ts` (8 tests, offline, throwaway keypairs): sign and
+`test/intent.test.ts` (15 tests, offline, throwaway keypairs): sign and
 verify, deterministic signing, tampered intent / signature / key
 rejection, malformed-input rejection, every schedule-mismatch case
-including the anti-replay paymentNumber rule, and the JSON file
-round-trip. Run with `npm test` (22 tests total: 14 contract + 8 intent).
+including the anti-replay paymentNumber rule (zero, far-ahead, and
+already-paid numbers), cross-intent signature rejection, canonical-byte
+independence from key order, and the JSON file round-trip. Run with
+`npm test` (47 tests total: 19 contract + 15 intent + 13 leash-rule).
