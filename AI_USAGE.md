@@ -39,10 +39,16 @@ with credit in the README.
    local EVM (including every limit rejection); `vite build` for the
    frontend; Playwright render check of the live demo after deployment.
    On-chain verification was done the same week: the contract deployed on
-   the Diana testnet, the agent runner executed real payments, and a limit
-   rejection was demonstrated on-chain. Every transaction hash in this
-   repo was read back from the chain. Nothing in this repo claims an
-   on-chain result that has not happened.
+   the Diana testnet, the agent runner executed real payments (8
+   payments, 0.50 QOR total), a limit rejection was demonstrated
+   on-chain, and a leash rejection was proven on-chain (19 Nov 2026: a
+   `withdraw()` call outside the leash rule's allowlist was blocked by
+   the abstract account — see `deployments/leash-rejection.json`).
+   Authenticated messaging was added 19 Nov 2026: the agent's payment
+   intents are ML-DSA-87 signed (`scripts/intent.ts`), verified
+   off-chain with anti-replay. Every transaction hash in this repo was
+   read back from the chain. Nothing in this repo claims an on-chain
+   result that has not happened.
 4. **Secrets discipline.** Fresh testnet-only wallets were generated for
    this project (one owner, one agent); their mnemonics and private keys
    live only in local, git-ignored `.env` files and mode-`600` files
@@ -58,17 +64,28 @@ with credit in the README.
   abstract account, links the agent key with a chain-enforced spending
   rule, and pays schedule 1 once through a relayed meta-transaction;
   added 16 Nov 2026, verified on-chain the same day).
+- `scripts/intent.ts` — ML-DSA-87 signed payment intents (added 19 Nov
+  2026: intent creation + off-chain verification with anti-replay;
+  signed intents recorded in `deployments/intents/`).
+- `scripts/leash-rule.ts` — the leash rule evaluator (per-tx / daily
+  limits, allowed calls) shared by the intent flow and the tests.
 - `scripts/deploy.ts` — deployment + deployment record (adapted from the
   sibling project's deploy-script pattern, with a testnet-only chain-id
   guard).
 - `scripts/setup-demo.ts`, `scripts/demo-rejection.ts`,
   `scripts/prepare-env.ts` — demo setup, the on-chain rejection
   demonstration, and local environment setup.
+- `scripts/drill-pay.ts`, `scripts/topup.ts` — the Q-Day Drill payment
+  and the contract top-up (0.3 QOR, 19 Nov 2026).
 - `scripts/build-artifact.mjs` — artifact regeneration from `solc` output.
-- `test/billpay-guard.test.ts` — contract tests (artifact checks, deposits
-  and withdrawals, schedule validation, agent authorisation, payment
-  execution, interval / cap / count / expiry enforcement, `checkDue`
-  reasons, revocation, insufficient balance).
+- `test/billpay-guard.test.ts` — contract tests (19 tests: artifact
+  checks, deposits and withdrawals, schedule validation, agent
+  authorisation, payment execution, interval / cap / count / expiry
+  enforcement, `checkDue` reasons, revocation, insufficient balance).
+- `test/intent.test.ts` — signed-intent tests (15 tests: signature
+  verification, wrong-signer / wrong-intent rejection, anti-replay).
+- `test/leash-rule.test.ts` — leash-rule tests (13 tests: per-tx and
+  daily limits, allowed-call enforcement, combined violations).
 - `src/*` — the React dashboard (public schedule + payment history reads,
   wallet actions for deposit / schedule / agent), adapted from the
   `viem-wagmi` template via the sibling project.
@@ -88,23 +105,31 @@ with credit in the README.
 ## Verification checklist
 
 - [x] `npm run compile` — contract compiles with solc 0.8.24.
-- [x] `npm test` — all contract tests pass on a local EVM (14/14).
+- [x] `npm test` — all tests pass on a local EVM (47/47: 19 contract +
+      15 intent + 13 leash-rule).
 - [x] `npm run typecheck` — `tsc --noEmit` clean.
 - [x] `npm run build` — frontend builds.
 - [x] Contract deployed on qorechain-diana (address in
       `deployments/testnet.json`).
 - [x] Agent executed real on-chain payments (hashes in
-      `deployments/demo.json` — 5 payments, 0.35 QOR, the fifth through
-      the abstract-account leash).
+      `deployments/demo.json` — 8 payments, 0.50 QOR total, the fifth
+      through the abstract-account leash).
 - [x] Abstract-account leash live: owner abstract account, agent key
       linked with spending rule `billpay-agent`, one leashed payment
       executed and verified on-chain (16 Nov 2026; see the README's
       "The leash" section for the hashes and REST evidence).
 - [x] A limit rejection demonstrated on-chain (record in
       `deployments/demo.json` — 2 reverted transactions).
+- [x] A leash rejection proven on-chain (19 Nov 2026): a `withdraw()`
+      call outside the rule's allowlist was blocked by the abstract
+      account (record in `deployments/leash-rejection.json` — Cosmos
+      tx `FEF47E6B…`, block 10335955).
+- [x] ML-DSA-87 signed payment intents live (19 Nov 2026): intent
+      creation + off-chain verification with anti-replay proven
+      (`scripts/intent.ts`; signed intents in `deployments/intents/`).
 - [x] Live demo renders on GitHub Pages (Playwright check, no errors).
 - [x] Demo video ≤ 3 minutes, real screen recording (`docs/demo.mp4` —
-      2:37, 1080p, verified with ffprobe + frame checks).
+      2:51 (171.3 s), 1080p, verified with ffprobe + frame checks).
 - [x] No secrets in the repo (`git grep` for mnemonic / private-key
       material before every push — final scan 16 Nov 2026: only the
       public Hardhat test mnemonic, placeholder `0x000…` keys in
