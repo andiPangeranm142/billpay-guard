@@ -1,0 +1,672 @@
+%PDF-1.3
+%ºß¬à
+3 0 obj
+<</Type /Page
+/Parent 1 0 R
+/Resources 2 0 R
+/MediaBox [0 0 595.2799999999999727 841.8899999999999864]
+/Contents 4 0 R
+>>
+endobj
+4 0 obj
+<<
+/Length 8145
+>>
+stream
+0.5670000000000001 w
+0 G
+BT
+/F1 22 Tf
+25.2999999999999972 TL
+0.063 0.725 0.506 rg
+39.6850393700787407 785.1970866141732586 Td
+(QoreChain AI) Tj
+ET
+BT
+/F1 16 Tf
+18.3999999999999986 TL
+0.157 g
+39.6850393700787407 756.8506299212598378 Td
+(Security Audit Report) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 728.5041732283464171 Td
+(Generated: 25/11/2026, 08.00.12) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.392 g
+39.6850393700787407 700.15771653543311 Td
+(Blockchain: qorechain) Tj
+ET
+0.78 G
+39.6850393700787407 685.9844881889763428 m
+555.5905511811024553 685.9844881889763428 l
+S
+BT
+/F1 12 Tf
+13.7999999999999989 TL
+0. g
+39.6850393700787407 657.6380314960629221 Td
+(Audit Overview) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+39.6850393700787407 629.291574803149615 Td
+(Overall Security Score: 72/100) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+39.6850393700787407 615.1183464566928478 Td
+(Risk Level: MEDIUM) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+39.6850393700787407 600.9451181102361943 Td
+(Quantum Readiness: HYBRID) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0. g
+39.6850393700787407 586.7718897637794271 Td
+(Total Vulnerabilities: 5) Tj
+ET
+BT
+/F1 12 Tf
+13.7999999999999989 TL
+0. g
+39.6850393700787407 544.2522047244094665 Td
+(Executive Summary) Tj
+ET
+BT
+/F1 10 Tf
+11.5 TL
+0.235 g
+39.6850393700787407 515.9057480314959321 Td
+(This contract implements a bill payment system with quantum-safe considerations on QoreChain. It includes proper) Tj
+T* (reentrancy protection, access controls, and handles fund deposits/withdrawals. However, there are concerns) Tj
+T* (regarding the implementation of quantum-safe signatures within the contract itself, potential reentrancy risks due to) Tj
+T* (external calls, and lack of fallback handling for PQC algorithms. The contract also has minor logic gaps in payee) Tj
+T* (validation and event emission.) Tj
+ET
+0.78 G
+0.5670000000000001 w
+0.78 G
+0.5670000000000001 w
+0.06 0.73 0.51 rg
+0.78 G
+0. w
+0.06 0.73 0.51 rg
+40. 416.69314960629913 107.1367821335572756 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+45. 403.1931496062991869 Td
+(Vulnerability) Tj
+ET
+0.06 0.73 0.51 rg
+0.78 G
+0. w
+0.06 0.73 0.51 rg
+147.1367821335572614 416.69314960629913 48.6000000000000014 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+152.1367821335572614 403.1931496062991869 Td
+(Severity) Tj
+ET
+0.06 0.73 0.51 rg
+0.78 G
+0. w
+0.06 0.73 0.51 rg
+195.7367821335572842 416.69314960629913 101.5666267041379456 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+200.7367821335572842 403.1931496062991869 Td
+(Location) Tj
+ET
+0.06 0.73 0.51 rg
+0.78 G
+0. w
+0.06 0.73 0.51 rg
+297.3034088376952582 416.69314960629913 257.976591162232296 -21.4999999999999964 re
+f
+BT
+/F2 10 Tf
+11.5 TL
+1. g
+302.3034088376952582 403.1931496062991869 Td
+(Recommendation) Tj
+ET
+0.78 G
+0.5670000000000001 w
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 395.1931496062991869 107.1367821335572756 -51.3999999999999986 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+45. 382.5431496062992096 Td
+(ML-DSA-87 Key) Tj
+T* (Management Not) Tj
+T* (Enforced in Contract) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+147.1367821335572614 395.1931496062991869 48.6000000000000014 -51.3999999999999986 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+152.1367821335572614 382.5431496062992096 Td
+(HIGH) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+195.7367821335572842 395.1931496062991869 101.5666267041379456 -51.3999999999999986 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+200.7367821335572842 382.5431496062992096 Td
+(Contract level) Tj
+T* (documentation and) Tj
+T* (function) Tj
+T* (executePayment) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+297.3034088376952582 395.1931496062991869 257.976591162232296 -51.3999999999999986 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+302.3034088376952582 382.5431496062992096 Td
+(Implement explicit checks for quantum-safe signatures where) Tj
+T* (required, or clarify in documentation that quantum safety is) Tj
+T* (entirely handled at the chain level.) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 343.7931496062992096 107.1367821335572756 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+45. 331.1431496062992892 Td
+(Reentrancy Protection) Tj
+T* (May Be Bypassed Due) Tj
+T* (to External Calls) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+147.1367821335572614 343.7931496062992096 48.6000000000000014 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+152.1367821335572614 331.1431496062992892 Td
+(MEDIUM) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+195.7367821335572842 343.7931496062992096 101.5666267041379456 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+200.7367821335572842 331.1431496062992892 Td
+(withdraw function and) Tj
+T* (executePayment) Tj
+T* (function) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+297.3034088376952582 343.7931496062992096 257.976591162232296 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+302.3034088376952582 331.1431496062992892 Td
+(Use transfer\(\) instead of call\(\) for ETH transfers, or ensure) Tj
+T* (proper reentrancy guards around external calls.) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 302.7431496062991982 107.1367821335572756 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+45. 290.093149606299221 Td
+(No Explicit Handling of) Tj
+T* (PQC Algorithm) Tj
+T* (Fallbacks) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+147.1367821335572614 302.7431496062991982 48.6000000000000014 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+152.1367821335572614 290.093149606299221 Td
+(MEDIUM) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+195.7367821335572842 302.7431496062991982 101.5666267041379456 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+200.7367821335572842 290.093149606299221 Td
+(Contract level) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+297.3034088376952582 302.7431496062991982 257.976591162232296 -41.0499999999999972 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+302.3034088376952582 290.093149606299221 Td
+(Implement versioning or fallback strategies for quantum-safe) Tj
+T* (algorithms to maintain compatibility.) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+40. 261.6931496062991869 107.1367821335572756 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+45. 249.0431496062992665 Td
+(Insufficient Validation of) Tj
+T* (Payee Address) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+147.1367821335572614 261.6931496062991869 48.6000000000000014 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+152.1367821335572614 249.0431496062992665 Td
+(LOW) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+195.7367821335572842 261.6931496062991869 101.5666267041379456 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+200.7367821335572842 249.0431496062992665 Td
+(createSchedule) Tj
+T* (function) Tj
+ET
+1. g
+0.78 G
+0. w
+1. g
+297.3034088376952582 261.6931496062991869 257.976591162232296 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+302.3034088376952582 249.0431496062992665 Td
+(Add additional checks to ensure the payee address is valid) Tj
+T* (\(e.g., not a contract with no payable functions\).) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+40. 230.9931496062991414 107.1367821335572756 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+45. 218.343149606299221 Td
+(Missing Event Emission) Tj
+T* (for Critical Operations) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+147.1367821335572614 230.9931496062991414 48.6000000000000014 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+152.1367821335572614 218.343149606299221 Td
+(INFO) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+195.7367821335572842 230.9931496062991414 101.5666267041379456 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+200.7367821335572842 218.343149606299221 Td
+(updateSchedule) Tj
+T* (function) Tj
+ET
+0.96 g
+0.78 G
+0. w
+0.96 g
+297.3034088376952582 230.9931496062991414 257.976591162232296 -30.6999999999999993 re
+f
+BT
+/F1 9 Tf
+10.3499999999999996 TL
+0.314 g
+302.3034088376952582 218.343149606299221 Td
+(Emit events for all significant parameter changes to improve) Tj
+T* (auditability.) Tj
+ET
+0.78 G
+0.5670000000000001 w
+0.78 G
+0. w
+0.78 G
+0.5670000000000001 w
+0.78 G
+0.5670000000000001 w
+BT
+/F1 8 Tf
+9.1999999999999993 TL
+0.588 g
+227.5977952755905562 19.8427559055116944 Td
+(Page 1 of 1 - Powered by QoreChain AI) Tj
+ET
+endstream
+endobj
+1 0 obj
+<</Type /Pages
+/Kids [3 0 R ]
+/Count 1
+>>
+endobj
+5 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+6 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+7 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+8 0 obj
+<<
+/Type /Font
+/BaseFont /Helvetica-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+9 0 obj
+<<
+/Type /Font
+/BaseFont /Courier
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+10 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+11 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-Oblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+12 0 obj
+<<
+/Type /Font
+/BaseFont /Courier-BoldOblique
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+13 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Roman
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+14 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Bold
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+15 0 obj
+<<
+/Type /Font
+/BaseFont /Times-Italic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+16 0 obj
+<<
+/Type /Font
+/BaseFont /Times-BoldItalic
+/Subtype /Type1
+/Encoding /WinAnsiEncoding
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+17 0 obj
+<<
+/Type /Font
+/BaseFont /ZapfDingbats
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+18 0 obj
+<<
+/Type /Font
+/BaseFont /Symbol
+/Subtype /Type1
+/FirstChar 32
+/LastChar 255
+>>
+endobj
+2 0 obj
+<<
+/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]
+/Font <<
+/F1 5 0 R
+/F2 6 0 R
+/F3 7 0 R
+/F4 8 0 R
+/F5 9 0 R
+/F6 10 0 R
+/F7 11 0 R
+/F8 12 0 R
+/F9 13 0 R
+/F10 14 0 R
+/F11 15 0 R
+/F12 16 0 R
+/F13 17 0 R
+/F14 18 0 R
+>>
+/XObject <<
+>>
+>>
+endobj
+19 0 obj
+<<
+/Producer (jsPDF 4.0.0)
+/CreationDate (D:20261125080012+07'00')
+>>
+endobj
+20 0 obj
+<<
+/Type /Catalog
+/Pages 1 0 R
+/OpenAction [3 0 R /FitH null]
+/PageLayout /OneColumn
+>>
+endobj
+xref
+0 21
+0000000000 65535 f 
+0000008349 00000 n 
+0000010166 00000 n 
+0000000015 00000 n 
+0000000152 00000 n 
+0000008406 00000 n 
+0000008531 00000 n 
+0000008661 00000 n 
+0000008794 00000 n 
+0000008931 00000 n 
+0000009054 00000 n 
+0000009183 00000 n 
+0000009315 00000 n 
+0000009451 00000 n 
+0000009579 00000 n 
+0000009706 00000 n 
+0000009835 00000 n 
+0000009968 00000 n 
+0000010070 00000 n 
+0000010414 00000 n 
+0000010500 00000 n 
+trailer
+<<
+/Size 21
+/Root 20 0 R
+/Info 19 0 R
+/ID [ <5B68FDF1CE323239F42F32368AA2F5AA> <5B68FDF1CE323239F42F32368AA2F5AA> ]
+>>
+startxref
+10604
+%%EOF
