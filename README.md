@@ -25,7 +25,7 @@ payees. It does not swap, does not trade, and holds no price feeds.
 - Contract: [`0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e`](https://explore.qore.network/address/0xac31fb4f4b85f29f6dc72e8485fa9188b37f3b6e) (deployed 15 Nov 2026, block 10151549, deploy tx `0x600dfc9301c97d178a3bc2676b1aa520dd4b2c7a15285f2f778f1198f1287c10`)
 - Live demo: https://andipangeranm142.github.io/billpay-guard/
 - Demo video: [`docs/demo.mp4`](docs/demo.mp4) (2:51, 1080p, real screen recording — includes the leash panel, the authenticated-messaging panel, and a leashed payment executed live during the recording with a verified ML-DSA-87 intent)
-- Top-up 19 Nov 2026: +0.30 QOR deposited ([tx `0x9099a9d1…d33deb`](https://explore.qore.network/tx/0x9099a9d1a3ee91c91da95699e81410639a8fdbaad24f5304c764001491d33deb), block 10367997) — the contract held 0.05 QOR but schedule 1 still owed 5 × 0.05 QOR; owner guard balance 0.05 → 0.35 QOR (0.30 QOR after payment #6). Record: [`deployments/topup.json`](deployments/topup.json).
+- Top-up 19 Nov 2026: +0.30 QOR deposited ([tx `0x9099a9d1…d33deb`](https://explore.qore.network/tx/0x9099a9d1a3ee91c91da95699e81410639a8fdbaad24f5304c764001491d33deb), block 10367997) — the contract held 0.05 QOR but schedule 1 still owed 5 × 0.05 QOR; owner guard balance 0.05 → 0.35 QOR (0.30 QOR after payment #8). Record: [`deployments/topup.json`](deployments/topup.json).
 - Project page: [billpay-guard on build.qorechain.io](https://build.qorechain.io/p/billpay-guard) (Post-Quantum AI Agents; AI-Native Verified)
 
 Deployment record: [`deployments/testnet.json`](deployments/testnet.json).
@@ -220,6 +220,8 @@ npx tsx scripts/leash.ts pay --require-intent              # pay only with a ver
 ```
 contracts/BillPayGuard.sol      the guard contract
 contracts/BillPayGuard.artifact.ts   generated ABI + bytecode (npm run compile)
+contracts/test/ReentrantAttacker.sol  TEST ONLY: malicious payee/withdrawer
+                                for the reentrancy tests (never deployed live)
 scripts/window.ts               PQC key registration + EVM window (owner & agent)
 scripts/deploy.ts               deploy to the Diana testnet
 scripts/setup-demo.ts           deposit + demo schedules + agent authorisation
@@ -237,12 +239,21 @@ scripts/leash-rule.ts           the spending rule as pure logic (allowlist
 scripts/topup.ts                top up the owner's deposited guard balance
                                 (deposit() + on-chain re-verification)
 scripts/demo-rejection.ts       demonstrate an on-chain limit rejection
+scripts/verify-live.ts          read-only live-state check (no wallet)
 scripts/render-check.mjs        Playwright render check of the live demo
 scripts/prepare-env.ts          one-time local env setup (writes .env files)
 test/billpay-guard.test.ts      contract tests (Ganache local chain)
+test/attack-battery.test.ts     adversarial tests: reentrancy attacks,
+                                cross-owner / nonexistent-schedule attacks,
+                                edge cases, model-based fuzz battery
 test/intent.test.ts             authenticated-messaging tests (offline)
 test/leash-rule.test.ts         spending-rule tests (offline, pure logic)
 src/                            React dashboard (Vite + wagmi + RainbowKit)
+docs/THREAT_MODEL.md            attackers, enforcement, residual risks
+docs/JUDGES.md                  how to verify every claim (judge's guide)
+docs/SECURITY.md                audit status + Slither triage
+docs/slither-report.txt         Slither 0.11.6 raw output (0 high / 0 med)
+docs/AUTHENTICATED_MESSAGING.md  the ML-DSA-87 intent layer, full write-up
 docs/demo.mp4                   demo video (real screen recording, ≤ 3 min)
 docs/featured.png               featured image for the project page
 deployments/testnet.json        deployment record (address, hashes, explorer links)
@@ -307,7 +318,11 @@ the abstract-account leash (see "The leash" above), bringing the total to
 0.40 QOR**. A seventh payment (schedule 1, 0.05 QOR) ran 19 Nov 2026
 through the leash, gated by the owner's verified ML-DSA-87 payment intent
 (Cosmos tx `456F314D…9FDDD76`, block 10335976), bringing the total to **7
-payments, 0.45 QOR**. Two further payment attempts were **rejected
+payments, 0.45 QOR**. An eighth payment (schedule 1, 0.05 QOR) ran
+19 Nov 2026 through the leash, again gated by a verified ML-DSA-87
+payment intent (Cosmos tx `A9F2CC2E…0A36CB`, block 10368360), executed
+live during the demo-video v2 recording, bringing the total to **8
+payments, 0.50 QOR**. Two further payment attempts were **rejected
 on-chain** (transactions mined with status `reverted`): one too-soon
 (interval not elapsed) and one cap-reaching (a third 0.1 QOR payment would
 have exceeded schedule 0's 0.25 QOR cap). A third refusal happened at the
@@ -316,12 +331,32 @@ spending-rule check (see "The leash" above). All hashes are recorded in
 [`deployments/demo.json`](deployments/demo.json) — nothing here claims an
 on-chain result that has not happened.
 
-Live state, re-verified 19 Nov 2026 after the intent-gated leashed
-payment (read back from the contract): the guard holds **0.05 QOR** (0.5
-QOR deposit − 0.45 QOR paid); schedule 0 has paid 0.2 / 0.25 QOR and is
-`cap-reached`; schedule 1 has paid 0.25 / 0.5 QOR (5/10 payments) and is
-`due` again once its 60 s interval elapses. Both schedules expire 15 Dec
-2026.
+Live state, re-verified 25 Nov 2026 (read back from the contract with
+`npx tsx scripts/verify-live.ts`): the guard holds **0.30 QOR** (0.80 QOR
+deposited − 0.50 QOR paid); schedule 0 has paid 0.2 / 0.25 QOR and is
+`cap-reached`; schedule 1 has paid 0.3 / 0.5 QOR (6/10 payments) and is
+`due`. Both schedules expire 15 Dec 2026.
+
+## Verification
+
+- **Tests** — `npm test`: 61 tests passing (19 contract + 15 intent +
+  13 leash-rule + 14 attack battery). The attack battery
+  (`test/attack-battery.test.ts`) deploys a malicious payee and a
+  malicious withdrawer that both try to re-enter the guard — and both
+  fail to take a second wei — plus three seeded model-based fuzz runs
+  (150 random operations each) where every outcome is predicted from
+  an off-chain model before it is sent.
+- **Static analysis** — Slither 0.11.6 on the contract: 6 findings,
+  0 high, 0 medium (triage in
+  [`docs/SECURITY.md`](docs/SECURITY.md), raw output in
+  [`docs/slither-report.txt`](docs/slither-report.txt)).
+- **Threat model** —
+  [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md): every attacker the
+  guard is built to stop, what stops each one, and the honest
+  residual risks.
+- **Judge's guide** — [`docs/JUDGES.md`](docs/JUDGES.md): how to
+  re-run every check above and re-read the live chain state, step by
+  step, with no wallet needed.
 
 ## Limitations — read this
 

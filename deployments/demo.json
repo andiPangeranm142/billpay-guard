@@ -11,7 +11,7 @@
     "cosmosTx": "A03C17E551C841A3A278DB886DC6D368137959BC3EEC8D508954A66862273BBD",
     "block": 10367997,
     "toppedUpAt": "2026-11-19T10:04:03.914Z",
-    "note": "Top-up 19 Nov 2026 (scripts/topup.ts): the contract held 0.05 QOR but schedule 1 still owed 5 x 0.05 = 0.25 QOR. Owner guard balance 0.05 -> 0.35 QOR; 0.30 QOR after payment #6. Full record: deployments/topup.json."
+    "note": "Top-up 19 Nov 2026 (scripts/topup.ts): the contract held 0.05 QOR but schedule 1 still owed 5 x 0.05 = 0.25 QOR. Owner guard balance 0.05 -> 0.35 QOR; 0.30 QOR after payment #8. Full record: deployments/topup.json."
   },
   "schedules": [
     {

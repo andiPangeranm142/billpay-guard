@@ -40,7 +40,8 @@ with credit in the README.
    frontend; Playwright render check of the live demo after deployment.
    On-chain verification was done the same week: the contract deployed on
    the Diana testnet, the agent runner executed real payments (8
-   payments, 0.50 QOR total), a limit rejection was demonstrated
+   payments, 0.50 QOR total, three of them through the
+   abstract-account leash), a limit rejection was demonstrated
    on-chain, and a leash rejection was proven on-chain (19 Nov 2026: a
    `withdraw()` call outside the leash rule's allowlist was blocked by
    the abstract account — see `deployments/leash-rejection.json`).
@@ -82,6 +83,22 @@ with credit in the README.
   checks, deposits and withdrawals, schedule validation, agent
   authorisation, payment execution, interval / cap / count / expiry
   enforcement, `checkDue` reasons, revocation, insufficient balance).
+- `test/attack-battery.test.ts` — adversarial tests (14 tests, added
+  25 Nov 2026: a reentrant payee and a reentrant withdrawer that both
+  fail to take a second wei, nonexistent-schedule and cross-owner
+  attacks, invalid schedule changes, event correctness, shared-balance
+  contention, the interval-0 boundary, and three seeded model-based
+  fuzz runs of 150 random operations each).
+- `contracts/test/ReentrantAttacker.sol` — the test-only malicious
+  payee / withdrawer contracts the attack battery deploys (never
+  deployed to a live chain).
+- `scripts/verify-live.ts` — read-only live-state check (added
+  25 Nov 2026: reads the deployed contract and prints balances,
+  totals, schedules, and due states; no wallet).
+- `docs/THREAT_MODEL.md`, `docs/JUDGES.md`, `docs/SECURITY.md`,
+  `docs/slither-report.txt` — threat model, judge's verification
+  guide, security notes with the Slither triage, and the raw Slither
+  0.11.6 output (added 25 Nov 2026).
 - `test/intent.test.ts` — signed-intent tests (15 tests: signature
   verification, wrong-signer / wrong-intent rejection, anti-replay).
 - `test/leash-rule.test.ts` — leash-rule tests (13 tests: per-tx and
@@ -105,19 +122,24 @@ with credit in the README.
 ## Verification checklist
 
 - [x] `npm run compile` — contract compiles with solc 0.8.24.
-- [x] `npm test` — all tests pass on a local EVM (47/47: 19 contract +
-      15 intent + 13 leash-rule).
+- [x] `npm test` — all tests pass on a local EVM (61/61: 19 contract +
+      15 intent + 13 leash-rule + 14 attack battery).
 - [x] `npm run typecheck` — `tsc --noEmit` clean.
 - [x] `npm run build` — frontend builds.
+- [x] Slither 0.11.6 on the contract: 6 findings, 0 high, 0 medium
+      (triage in `docs/SECURITY.md`, raw output in
+      `docs/slither-report.txt`).
 - [x] Contract deployed on qorechain-diana (address in
       `deployments/testnet.json`).
 - [x] Agent executed real on-chain payments (hashes in
-      `deployments/demo.json` — 8 payments, 0.50 QOR total, the fifth
+      `deployments/demo.json` — 8 payments, 0.50 QOR total, three
       through the abstract-account leash).
 - [x] Abstract-account leash live: owner abstract account, agent key
-      linked with spending rule `billpay-agent`, one leashed payment
-      executed and verified on-chain (16 Nov 2026; see the README's
-      "The leash" section for the hashes and REST evidence).
+      linked with spending rule `billpay-agent`, three leashed
+      payments executed and verified on-chain (16 Nov 2026 and
+      19 Nov 2026, the last two gated by verified ML-DSA-87 payment
+      intents; see the README's "The leash" section for the hashes
+      and REST evidence).
 - [x] A limit rejection demonstrated on-chain (record in
       `deployments/demo.json` — 2 reverted transactions).
 - [x] A leash rejection proven on-chain (19 Nov 2026): a `withdraw()`

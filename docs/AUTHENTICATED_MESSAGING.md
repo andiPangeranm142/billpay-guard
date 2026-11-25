@@ -168,4 +168,5 @@ rejection, malformed-input rejection, every schedule-mismatch case
 including the anti-replay paymentNumber rule (zero, far-ahead, and
 already-paid numbers), cross-intent signature rejection, canonical-byte
 independence from key order, and the JSON file round-trip. Run with
-`npm test` (47 tests total: 19 contract + 15 intent + 13 leash-rule).
+`npm test` (61 tests total: 19 contract + 15 intent + 13 leash-rule +
+14 attack battery).

@@ -1,0 +1,28 @@
+Multiple frameworks detected: solc, Solc-json. Using solc (highest priority). Use --compile-force-framework to override.
+'/home/hatch/.solc-select/artifacts/solc-0.8.24/solc-0.8.24 --version' running
+'/home/hatch/.solc-select/artifacts/solc-0.8.24/solc-0.8.24 contracts/BillPayGuard.sol --combined-json abi,ast,bin,bin-runtime,srcmap,srcmap-runtime,userdoc,devdoc,hashes --allow-paths .,/home/hatch/workspace/qorechain/billpay-guard/repo/contracts' running
+INFO:Detectors:
+Detector: timestamp
+BillPayGuard.createSchedule(address,uint256,uint256,uint256,uint256,uint256) (contracts/BillPayGuard.sol#141-181) uses timestamp for comparisons
+	Dangerous comparisons:
+	- expiry <= block.timestamp (contracts/BillPayGuard.sol#153)
+BillPayGuard.updateSchedule(uint256,uint256,uint256,uint256,uint256,uint256) (contracts/BillPayGuard.sol#185-206) uses timestamp for comparisons
+	Dangerous comparisons:
+	- expiry <= block.timestamp (contracts/BillPayGuard.sol#199)
+BillPayGuard.executePayment(uint256) (contracts/BillPayGuard.sol#237-260) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > s.expiry (contracts/BillPayGuard.sol#241)
+	- block.timestamp < s.lastPaidAt + s.intervalSeconds (contracts/BillPayGuard.sol#243)
+BillPayGuard.checkDue(uint256) (contracts/BillPayGuard.sol#269-278) uses timestamp for comparisons
+	Dangerous comparisons:
+	- block.timestamp > s.expiry (contracts/BillPayGuard.sol#272)
+	- block.timestamp < s.lastPaidAt + s.intervalSeconds (contracts/BillPayGuard.sol#274)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+Detector: low-level-calls
+Low level call in BillPayGuard.withdraw(uint256) (contracts/BillPayGuard.sol#125-131):
+	- (ok,None) = msg.sender.call{value: amount}() (contracts/BillPayGuard.sol#128)
+Low level call in BillPayGuard.executePayment(uint256) (contracts/BillPayGuard.sol#237-260):
+	- (ok,None) = s.payee.call{value: s.amountPerPayment}() (contracts/BillPayGuard.sol#256)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Slither:contracts/BillPayGuard.sol analyzed (1 contracts with 102 detectors), 6 result(s) found
